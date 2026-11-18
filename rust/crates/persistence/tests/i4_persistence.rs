@@ -213,7 +213,6 @@ fn ready_capability() -> runtime::CapabilitySnapshot {
             magisk_clipboard: available(),
             magisk_notifications: available(),
             magisk_wake_alarm: available(),
-            execution_app_guard: available(),
             execution_shell_guard: available(),
             execution_root_guard: available(),
         },
@@ -256,7 +255,7 @@ fn ready_capability() -> runtime::CapabilitySnapshot {
 
 #[tokio::test]
 async fn i4_g10_synchronous_mutation_round_trips_and_replays_from_the_canonical_request_record() {
-    use contract::{ExecutionClass, RunAs};
+    use contract::ExecutionClass;
     use runtime::{
         ExecutionCompletion, ExecutionOutcome, ExecutionPayload, ProviderToken, RecoveryProof,
         RuntimeCore, SynchronousAdmission, SynchronousExecutionState,
@@ -270,7 +269,7 @@ async fn i4_g10_synchronous_mutation_round_trips_and_replays_from_the_canonical_
     let executions = FakeExecutions::default();
     executions.push(Ok(ExecutionCompletion {
         fence: ready_capability().fence,
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: serde_json::json!({"mutated": true}),
             encoded_bytes: 1,
@@ -288,9 +287,9 @@ async fn i4_g10_synchronous_mutation_round_trips_and_replays_from_the_canonical_
         request_id: id(850),
         payload_sha256: "85".repeat(32),
         execution_id: id(851),
-        operation: "command.run".to_owned(),
-        route: domain::ExecutorRequest::Command(RunAs::App),
-        payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+        operation: "network.diagnose".to_owned(),
+        route: domain::ExecutorRequest::Network(domain::NetworkRoute::InspectOrDiagnose),
+        payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
         settlement_bound_bytes: runtime::RESERVE_FLOOR_BYTES,
         now_ms: 1_788_825_600_000,
     };
@@ -350,7 +349,7 @@ async fn i4_g10_synchronous_mutation_round_trips_and_replays_from_the_canonical_
 /// path removes what an expired request owns before it reserves its own request.
 #[tokio::test]
 async fn i4_g10_an_expired_retained_result_never_blocks_later_admissions() {
-    use contract::{MotherTool, RunAs};
+    use contract::MotherTool;
     use runtime::{
         ExecutionCompletion, ExecutionOutcome, ExecutionPayload, RecoveryProof, RuntimeCore,
         SynchronousAdmission, TaskAdmission, TaskAdmissionResult,
@@ -378,7 +377,7 @@ async fn i4_g10_an_expired_retained_result_never_blocks_later_admissions() {
     let executions = FakeExecutions::default();
     executions.push(Ok(ExecutionCompletion {
         fence: ready_capability().fence,
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: serde_json::json!({"ran": true}),
             encoded_bytes: 1,
@@ -399,9 +398,9 @@ async fn i4_g10_an_expired_retained_result_never_blocks_later_admissions() {
                 request_id: id(870),
                 payload_sha256: "87".repeat(32),
                 execution_id: id(871),
-                operation: "command.run".to_owned(),
-                route: domain::ExecutorRequest::Command(RunAs::App),
-                payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+                operation: "network.diagnose".to_owned(),
+                route: domain::ExecutorRequest::Network(domain::NetworkRoute::InspectOrDiagnose),
+                payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
                 settlement_bound_bytes: runtime::RESERVE_FLOOR_BYTES,
                 now_ms: NOW_MS,
             },
@@ -431,10 +430,10 @@ async fn i4_g10_an_expired_retained_result_never_blocks_later_admissions() {
             payload_sha256: "89".repeat(32),
             task_id: id(891),
             execution_id: id(892),
-            tool: MotherTool::Command,
-            action: "run".to_owned(),
-            route: domain::ExecutorRequest::Command(RunAs::App),
-            payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+            tool: MotherTool::Network,
+            action: "diagnose".to_owned(),
+            route: domain::ExecutorRequest::Network(domain::NetworkRoute::InspectOrDiagnose),
+            payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
             created_at: "2026-09-08T00:00:02.000Z".to_owned(),
             settlement_bound_bytes: runtime::RESERVE_FLOOR_BYTES,
             now_ms: NOW_MS + 2_000,
@@ -454,7 +453,7 @@ async fn i4_g10_an_expired_retained_result_never_blocks_later_admissions() {
 
 #[tokio::test]
 async fn i4_g10_a_result_over_the_retention_bound_is_not_rewritten_with_every_later_commit() {
-    use contract::{ErrorCode, RunAs};
+    use contract::ErrorCode;
     use runtime::{
         ExecutionCompletion, ExecutionOutcome, ExecutionPayload, RecoveryProof, RuntimeCore,
         SynchronousAdmission, SynchronousExecutionState,
@@ -469,7 +468,7 @@ async fn i4_g10_a_result_over_the_retention_bound_is_not_rewritten_with_every_la
     let large = serde_json::json!({"nodes": "n".repeat(12 * 1024)});
     executions.push(Ok(ExecutionCompletion {
         fence: ready_capability().fence,
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: large.clone(),
             encoded_bytes: 1,
@@ -488,7 +487,7 @@ async fn i4_g10_a_result_over_the_retention_bound_is_not_rewritten_with_every_la
         payload_sha256: "86".repeat(32),
         execution_id: id(861),
         operation: "visual.observe".to_owned(),
-        route: domain::ExecutorRequest::Command(RunAs::App),
+        route: domain::ExecutorRequest::Network(domain::NetworkRoute::InspectOrDiagnose),
         payload: ExecutionPayload::OpaqueOperation("visual.observe".to_owned()),
         settlement_bound_bytes: 32 * 1024,
         now_ms: 1_788_825_600_000,
@@ -539,7 +538,7 @@ async fn i4_g10_a_result_over_the_retention_bound_is_not_rewritten_with_every_la
 
 #[tokio::test]
 async fn i8_task_g02_cancel_round_trips_through_the_canonical_store() {
-    use contract::{ExecutionClass, MotherTool, RunAs, TaskControlCall, TaskGetInput, TaskState};
+    use contract::{ExecutionClass, MotherTool, TaskControlCall, TaskGetInput, TaskState};
     use runtime::{
         ExecutionPayload, ExecutorRecord, ProviderToken, RecoveryProof, RuntimeCore,
         fakes::{FakeArtifacts, FakeExecutions, FakeHostControl},
@@ -565,8 +564,8 @@ async fn i8_task_g02_cancel_round_trips_through_the_canonical_store() {
                 execution_id: execution_id.clone(),
                 state: TaskState::Queued,
                 cancel_requested: false,
-                tool: MotherTool::Command,
-                action: "run".to_owned(),
+                tool: MotherTool::Network,
+                action: "diagnose".to_owned(),
                 created_at: "2026-09-08T00:00:00.000Z".to_owned(),
                 started_at: None,
                 ended_at: None,
@@ -582,8 +581,12 @@ async fn i8_task_g02_cancel_round_trips_through_the_canonical_store() {
                         runtime_instance_id: id(2),
                     },
                 }),
-                route: Some(StoredRoute::Command { run_as: RunAs::App }),
-                payload: Some(ExecutionPayload::OpaqueOperation("command.run".to_owned())),
+                route: Some(StoredRoute::Network {
+                    route: StoredNetworkRoute::InspectOrDiagnose,
+                }),
+                payload: Some(ExecutionPayload::OpaqueOperation(
+                    "network.diagnose".to_owned(),
+                )),
                 result: None,
                 error: None,
                 reserved_bytes: runtime::RESERVE_FLOOR_BYTES,
@@ -638,7 +641,7 @@ async fn i8_task_g02_cancel_round_trips_through_the_canonical_store() {
     );
     assert_eq!(
         canonical.tasks[0].error.as_ref().unwrap().operation,
-        "command.run"
+        "network.diagnose"
     );
 
     let restarted = RuntimeCore::new(
@@ -661,7 +664,7 @@ async fn i8_task_g02_cancel_round_trips_through_the_canonical_store() {
 
 #[tokio::test]
 async fn i8_task_g04_real_store_full_retention_replays_then_expiry_releases_admission() {
-    use contract::{ExecutionClass, MotherTool, PublicError, RunAs, TaskState};
+    use contract::{ExecutionClass, MotherTool, PublicError, TaskState};
     use runtime::{
         ExecutionPayload, ExecutorRecord, ProviderToken, RecoveryProof, RuntimeCore, TaskAdmission,
         TaskAdmissionResult,
@@ -696,8 +699,8 @@ async fn i8_task_g04_real_store_full_retention_replays_then_expiry_releases_admi
                         TaskState::Cancelled
                     },
                     cancel_requested: !queued,
-                    tool: MotherTool::Command,
-                    action: "run".to_owned(),
+                    tool: MotherTool::Network,
+                    action: "diagnose".to_owned(),
                     created_at: format!("2026-09-08T00:{:02}:{:02}.000Z", index / 60, index % 60),
                     started_at: None,
                     ended_at: (!queued).then(|| "2026-09-08T01:00:00.000Z".to_owned()),
@@ -713,12 +716,16 @@ async fn i8_task_g04_real_store_full_retention_replays_then_expiry_releases_admi
                             runtime_instance_id: id(2),
                         },
                     }),
-                    route: Some(StoredRoute::Command { run_as: RunAs::App }),
-                    payload: Some(ExecutionPayload::OpaqueOperation("command.run".to_owned())),
+                    route: Some(StoredRoute::Network {
+                        route: StoredNetworkRoute::InspectOrDiagnose,
+                    }),
+                    payload: Some(ExecutionPayload::OpaqueOperation(
+                        "network.diagnose".to_owned(),
+                    )),
                     result: None,
                     error: (!queued).then_some(PublicError {
                         code: ErrorCode::Cancelled,
-                        operation: "command.run".to_owned(),
+                        operation: "network.diagnose".to_owned(),
                         retryable: false,
                         message: None,
                         capability: None,
@@ -755,10 +762,10 @@ async fn i8_task_g04_real_store_full_retention_replays_then_expiry_releases_admi
         payload_sha256: format!("{index:064x}"),
         task_id: id(10_001 + index * 3),
         execution_id: id(10_002 + index * 3),
-        tool: MotherTool::Command,
-        action: "run".to_owned(),
-        route: domain::ExecutorRequest::Command(RunAs::App),
-        payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+        tool: MotherTool::Network,
+        action: "diagnose".to_owned(),
+        route: domain::ExecutorRequest::Network(domain::NetworkRoute::InspectOrDiagnose),
+        payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
         created_at: "2026-09-09T00:00:00.000Z".to_owned(),
         settlement_bound_bytes: runtime::RESERVE_FLOOR_BYTES,
         now_ms,
@@ -1076,7 +1083,7 @@ fn i4_g07_full_logical_capacity_preserves_terminal_and_recovery_commits() {
             task_id: None,
             synchronous_execution: Some(StoredSynchronousExecution {
                 execution_id: id(40),
-                operation: "command.run".to_owned(),
+                operation: "network.diagnose".to_owned(),
                 state: runtime::SynchronousExecutionState::Running,
                 ended_at: None,
                 executor: runtime::ExecutorRecord {
@@ -1090,10 +1097,10 @@ fn i4_g07_full_logical_capacity_preserves_terminal_and_recovery_commits() {
                         runtime_instance_id: id(2),
                     },
                 },
-                route: StoredRoute::Command {
-                    run_as: contract::RunAs::App,
+                route: StoredRoute::Network {
+                    route: StoredNetworkRoute::InspectOrDiagnose,
                 },
-                payload: runtime::ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+                payload: runtime::ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
                 result: None,
                 error: None,
                 reserved_bytes: 0,
@@ -1150,7 +1157,7 @@ fn i4_g07_full_logical_capacity_preserves_terminal_and_recovery_commits() {
                 execution.ended_at = Some("2026-09-08T00:00:01.000Z".to_owned());
                 execution.error = Some(contract::PublicError {
                     code: ErrorCode::IoError,
-                    operation: "command.run".to_owned(),
+                    operation: "network.diagnose".to_owned(),
                     retryable: false,
                     message: None,
                     capability: None,
@@ -1275,7 +1282,7 @@ impl runtime::HostControlPort for CleanupQuarantine {
 
 #[test]
 fn i4_g10_json_round_trip_preserves_terminal_cancel_and_not_host_quarantine() {
-    use contract::{ExecutionClass, MotherTool, PublicError, RunAs, TaskState};
+    use contract::{ExecutionClass, MotherTool, PublicError, TaskState};
     use runtime::{
         ExecutionPayload, ExecutorRecord, HostControlPort, PersistencePort, ProviderToken,
     };
@@ -1291,8 +1298,8 @@ fn i4_g10_json_round_trip_preserves_terminal_cancel_and_not_host_quarantine() {
         execution_id,
         state: TaskState::Failed,
         cancel_requested: true,
-        tool: MotherTool::Command,
-        action: "run".to_owned(),
+        tool: MotherTool::Network,
+        action: "diagnose".to_owned(),
         created_at: "2026-09-08T00:00:00.000Z".to_owned(),
         started_at: Some("2026-09-08T00:00:01.000Z".to_owned()),
         ended_at: Some("2026-09-08T00:00:02.000Z".to_owned()),
@@ -1308,12 +1315,16 @@ fn i4_g10_json_round_trip_preserves_terminal_cancel_and_not_host_quarantine() {
                 runtime_instance_id: id(2),
             },
         }),
-        route: Some(StoredRoute::Command { run_as: RunAs::App }),
-        payload: Some(ExecutionPayload::OpaqueOperation("command.run".to_owned())),
+        route: Some(StoredRoute::Network {
+            route: StoredNetworkRoute::InspectOrDiagnose,
+        }),
+        payload: Some(ExecutionPayload::OpaqueOperation(
+            "network.diagnose".to_owned(),
+        )),
         result: None,
         error: Some(PublicError {
             code: ErrorCode::IoError,
-            operation: "command.run".to_owned(),
+            operation: "network.diagnose".to_owned(),
             retryable: false,
             message: None,
             capability: None,
@@ -1344,7 +1355,7 @@ fn i4_g10_json_round_trip_preserves_terminal_cancel_and_not_host_quarantine() {
 }
 
 fn recovery_task(task_id: u64, execution_id: u64, instance_id: u64) -> StoredTask {
-    use contract::{ExecutionClass, MotherTool, RunAs, TaskState};
+    use contract::{ExecutionClass, MotherTool, TaskState};
     use runtime::{ExecutionPayload, ExecutorRecord, ProviderToken};
 
     StoredTask {
@@ -1353,8 +1364,8 @@ fn recovery_task(task_id: u64, execution_id: u64, instance_id: u64) -> StoredTas
         execution_id: id(execution_id),
         state: TaskState::Created,
         cancel_requested: false,
-        tool: MotherTool::Command,
-        action: "run".to_owned(),
+        tool: MotherTool::Network,
+        action: "diagnose".to_owned(),
         created_at: "2026-09-08T00:00:00.000Z".to_owned(),
         started_at: None,
         ended_at: None,
@@ -1370,8 +1381,12 @@ fn recovery_task(task_id: u64, execution_id: u64, instance_id: u64) -> StoredTas
                 runtime_instance_id: id(instance_id),
             },
         }),
-        route: Some(StoredRoute::Command { run_as: RunAs::App }),
-        payload: Some(ExecutionPayload::OpaqueOperation("command.run".to_owned())),
+        route: Some(StoredRoute::Network {
+            route: StoredNetworkRoute::InspectOrDiagnose,
+        }),
+        payload: Some(ExecutionPayload::OpaqueOperation(
+            "network.diagnose".to_owned(),
+        )),
         result: None,
         error: None,
         reserved_bytes: runtime::RESERVE_FLOOR_BYTES,
@@ -1405,7 +1420,7 @@ fn i4_g10_canonical_store_rejects_shared_task_and_synchronous_execution_identity
     task.ended_at = Some("2026-09-08T00:00:02.000Z".to_owned());
     task.error = Some(contract::PublicError {
         code: ErrorCode::IoError,
-        operation: "command.run".to_owned(),
+        operation: "network.diagnose".to_owned(),
         retryable: false,
         message: None,
         capability: None,
@@ -1418,7 +1433,7 @@ fn i4_g10_canonical_store_rejects_shared_task_and_synchronous_execution_identity
     synchronous.ended_at = Some("2026-09-08T00:00:02.000Z".to_owned());
     synchronous.error = Some(contract::PublicError {
         code: ErrorCode::IoError,
-        operation: "command.run".to_owned(),
+        operation: "network.diagnose".to_owned(),
         retryable: false,
         message: None,
         capability: None,
@@ -1443,7 +1458,7 @@ fn recovery_synchronous(request_id: u64, execution_id: u64, instance_id: u64) ->
         task_id: None,
         synchronous_execution: Some(StoredSynchronousExecution {
             execution_id: id(execution_id),
-            operation: "command.run".to_owned(),
+            operation: "network.diagnose".to_owned(),
             state: runtime::SynchronousExecutionState::Running,
             ended_at: None,
             executor: runtime::ExecutorRecord {
@@ -1457,10 +1472,10 @@ fn recovery_synchronous(request_id: u64, execution_id: u64, instance_id: u64) ->
                     runtime_instance_id: id(instance_id),
                 },
             },
-            route: StoredRoute::Command {
-                run_as: contract::RunAs::App,
+            route: StoredRoute::Network {
+                route: StoredNetworkRoute::InspectOrDiagnose,
             },
-            payload: runtime::ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+            payload: runtime::ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
             result: None,
             error: None,
             reserved_bytes: runtime::RESERVE_FLOOR_BYTES,
@@ -1530,7 +1545,6 @@ async fn i4_g03_cleanup_unverified_cannot_settle_a_prior_execution() {
 
 #[tokio::test]
 async fn i4_g10_synchronous_recovery_is_durable_and_never_replays_the_external_effect() {
-    use contract::RunAs;
     use runtime::{
         ExecutionPayload, RecoveryProof, RuntimeCore, SynchronousAdmission,
         SynchronousExecutionState,
@@ -1583,9 +1597,9 @@ async fn i4_g10_synchronous_recovery_is_durable_and_never_replays_the_external_e
         request_id: id(860),
         payload_sha256: "99".repeat(32),
         execution_id: id(861),
-        operation: "command.run".to_owned(),
-        route: domain::ExecutorRequest::Command(RunAs::App),
-        payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+        operation: "network.diagnose".to_owned(),
+        route: domain::ExecutorRequest::Network(domain::NetworkRoute::InspectOrDiagnose),
+        payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
         settlement_bound_bytes: runtime::RESERVE_FLOOR_BYTES,
         now_ms: 1_788_825_602_000,
     };
@@ -2178,7 +2192,7 @@ fn i4_runtime_commits_rebase_across_artifact_publications_only() {
 /// Runtime still accepts.
 #[test]
 fn i4_stranded_executions_are_cleared_only_without_a_live_runtime() {
-    use contract::{ExecutionClass, MotherTool, RunAs, TaskState};
+    use contract::{ExecutionClass, MotherTool, TaskState};
     use runtime::{ExecutionPayload, ExecutorRecord, ProviderToken};
 
     let (directory, store, lease) = initialized_store("stranded");
@@ -2201,8 +2215,8 @@ fn i4_stranded_executions_are_cleared_only_without_a_live_runtime() {
                 execution_id: execution_id.clone(),
                 state: TaskState::Running,
                 cancel_requested: false,
-                tool: MotherTool::Command,
-                action: "run".to_owned(),
+                tool: MotherTool::Network,
+                action: "diagnose".to_owned(),
                 created_at: "2026-09-08T00:00:00.000Z".to_owned(),
                 started_at: Some("2026-09-08T00:00:00.000Z".to_owned()),
                 ended_at: None,
@@ -2218,8 +2232,12 @@ fn i4_stranded_executions_are_cleared_only_without_a_live_runtime() {
                         runtime_instance_id: id(2),
                     },
                 }),
-                route: Some(StoredRoute::Command { run_as: RunAs::App }),
-                payload: Some(ExecutionPayload::OpaqueOperation("command.run".to_owned())),
+                route: Some(StoredRoute::Network {
+                    route: StoredNetworkRoute::InspectOrDiagnose,
+                }),
+                payload: Some(ExecutionPayload::OpaqueOperation(
+                    "network.diagnose".to_owned(),
+                )),
                 result: None,
                 error: None,
                 reserved_bytes: runtime::RESERVE_FLOOR_BYTES,
@@ -2277,7 +2295,7 @@ fn i4_stranded_executions_are_cleared_only_without_a_live_runtime() {
         .find(|task| task.task_id == task_id)
         .unwrap();
     assert_eq!(task.state, TaskState::Interrupted);
-    assert_eq!(task.error.as_ref().unwrap().operation, "command.run");
+    assert_eq!(task.error.as_ref().unwrap().operation, "network.diagnose");
     assert!(state.reservations.is_empty());
     assert_eq!(
         state.request_records[0].expires_at_ms,

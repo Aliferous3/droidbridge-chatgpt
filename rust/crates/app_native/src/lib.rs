@@ -4,10 +4,10 @@ mod android;
 mod app_guard_recovery;
 mod app_host;
 mod automation_wake;
-mod command;
 mod guard;
 mod mcp_listener;
 mod network;
+mod shizuku_process;
 mod tunnel;
 mod visual;
 
@@ -16,7 +16,6 @@ use app_host::{AppHostControl, start_host};
 #[cfg(target_os = "android")]
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use chrono::{SecondsFormat, Utc};
-pub(crate) use command::ApkCommandProcessPort;
 use contract::{
     Availability, CapabilityState, ContextCall, ErrorCode, PublicError, PublicPayload,
     PublicResponse, RuntimeHost, ScalarValue, UuidV4,
@@ -42,14 +41,12 @@ use persistence::{
     JsonPersistencePort, LifetimeLease, ProcessFacts, RuntimeArtifactPort, RuntimeLive,
     RuntimeOwner, StateStore, decode_canonical_state, realistic_store_fixture,
 };
-#[cfg(unix)]
-use persistence::{GuardIdentity, GuardRecovery, classify_guard_proof, encode_guard_frame};
 use runtime::{
     AdmittedExecution, AndroidExecutionDispatch, AndroidFrameworkFilesystemPort,
     AndroidPrimitiveResult, ApkCapabilityPort, ApkRuntimeVertical, CompositeExecutionSurface,
     FilesystemPrimitiveDirectoryPage, FilesystemPrimitiveMetadata, FilesystemPrimitivePort,
-    NativeCommandExecutionSurface, NativeFilesystemExecutionSurface, NativeNetworkExecutionSurface,
-    NativeVisualExecutionSurface, RuntimeCore,
+    NativeFilesystemExecutionSurface, NativeNetworkExecutionSurface, NativeVisualExecutionSurface,
+    RuntimeCore,
 };
 use serde::Serialize;
 use std::{
@@ -110,6 +107,9 @@ fn validate_shizuku_launch(
 }
 
 #[cfg(any(unix, test))]
+const MAX_SHIZUKU_ARGUMENT_BYTES: usize = 32_768;
+
+#[cfg(any(unix, test))]
 fn validate_shizuku_arguments(
     client_id: &str,
     execution_id: &str,
@@ -136,8 +136,8 @@ fn validate_shizuku_arguments(
     arguments
         .iter()
         .try_fold(0_usize, |total, argument| {
-            // A shell command is one argument, and the Command contract admits it up to its bound.
-            if argument.len() > runtime::COMMAND_MAX_COMMAND_BYTES || argument.contains('\0') {
+            // A shell command is one argument, bounded like the removed public command tool's.
+            if argument.len() > MAX_SHIZUKU_ARGUMENT_BYTES || argument.contains('\0') {
                 None
             } else {
                 total.checked_add(argument.len())
@@ -214,8 +214,6 @@ type AndroidFilesystemSurface = NativeFilesystemExecutionSurface<
     AndroidFrameworkFilesystemPort<AndroidFrameworkFilesystemDispatcher>,
     AndroidShizukuFilesystemPort,
 >;
-type AndroidCommandSurface =
-    NativeCommandExecutionSurface<RuntimeArtifactPort, ApkCapabilityPort, ApkCommandProcessPort>;
 /// The APK host's S-NET-001 network surface. Its App/framework facts travel the one
 /// in-process `android.framework` bridge, its read-only supplement travels the Shizuku
 /// filesystem primitive, and its capture bytes travel the filesystem surface it shares
@@ -231,7 +229,6 @@ type AndroidNetworkSurface = NativeNetworkExecutionSurface<
 >;
 type AndroidExecutionSurface = CompositeExecutionSurface<
     AndroidFilesystemSurface,
-    AndroidCommandSurface,
     AndroidNetworkSurface,
     AndroidVisualSurface,
     AndroidMotherToolSurface,
@@ -1663,53 +1660,6 @@ fn query_apk_artifacts(
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_droidbridge_standalone_runtimehost_NativeRuntime_nativeProbeAppGuard(
-    mut env: EnvUnowned,
-    _class: JClass,
-    guard_path: JString,
-) -> jboolean {
-    match env
-        .with_env(|owned| -> jni::errors::Result<jboolean> {
-            let path = guard_path.mutf8_chars(owned)?.to_str().into_owned();
-            let result = with_host(|host| {
-                guard::scope()?.bind_guard_path(PathBuf::from(&path));
-                match probe_app_guard(host, Path::new(&path)) {
-                    Ok(true) => Ok(true),
-                    Ok(false) => {
-                        quarantine_app_guard(host)?;
-                        record_host_fault(host, "CLEANUP_UNVERIFIED", "app_guard_probe")?;
-                        Ok(false)
-                    }
-                    Err(error) => {
-                        quarantine_app_guard(host)?;
-                        let step = if error.reason.starts_with("app_guard_probe_") {
-                            error.reason.to_owned()
-                        } else {
-                            format!("app_guard_probe_{}", error_code_token(error.code))
-                        };
-                        let phase = match error.os_error {
-                            Some(errno) => format!("{step}_errno_{errno}"),
-                            None => step,
-                        };
-                        record_host_fault(host, "CLEANUP_UNVERIFIED", &phase)?;
-                        Ok(false)
-                    }
-                }
-            });
-            Ok(if result.unwrap_or(false) {
-                JNI_TRUE
-            } else {
-                JNI_FALSE
-            })
-        })
-        .into_outcome()
-    {
-        Outcome::Ok(value) => value,
-        Outcome::Err(_) | Outcome::Panic(_) => JNI_FALSE,
-    }
-}
-
-#[unsafe(no_mangle)]
 pub extern "system" fn Java_com_droidbridge_standalone_runtimehost_NativeRuntime_nativePrepareShizukuGuardProof(
     mut env: EnvUnowned,
     _class: JClass,
@@ -1775,46 +1725,6 @@ pub extern "system" fn Java_com_droidbridge_standalone_runtimehost_NativeRuntime
             let execution_id = execution_id.mutf8_chars(owned)?.to_str().into_owned();
             let aborted = abort_shizuku_guard_proof(&execution_id).unwrap_or(false);
             Ok(if aborted { JNI_TRUE } else { JNI_FALSE })
-        })
-        .into_outcome()
-    {
-        Outcome::Ok(value) => value,
-        Outcome::Err(_) | Outcome::Panic(_) => JNI_FALSE,
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_com_droidbridge_standalone_runtimehost_NativeRuntime_nativeRunAppCommand(
-    mut env: EnvUnowned,
-    _class: JClass,
-    execution_id: JString,
-    request_json: JString,
-) -> jstring {
-    match env
-        .with_env(|owned| -> jni::errors::Result<jstring> {
-            let execution_id = execution_id.mutf8_chars(owned)?.to_str().into_owned();
-            let request_json = request_json.mutf8_chars(owned)?.to_str().into_owned();
-            let encoded = command::run_app_command(&execution_id, &request_json);
-            Ok(owned.new_string(encoded)?.into_raw())
-        })
-        .into_outcome()
-    {
-        Outcome::Ok(value) => value,
-        Outcome::Err(_) | Outcome::Panic(_) => ptr::null_mut(),
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_com_droidbridge_standalone_runtimehost_NativeRuntime_nativeCancelAppCommand(
-    mut env: EnvUnowned,
-    _class: JClass,
-    execution_id: JString,
-) -> jboolean {
-    match env
-        .with_env(|owned| -> jni::errors::Result<jboolean> {
-            let execution_id = execution_id.mutf8_chars(owned)?.to_str().into_owned();
-            let cancelled = command::cancel_app_command(&execution_id);
-            Ok(if cancelled { JNI_TRUE } else { JNI_FALSE })
         })
         .into_outcome()
     {
@@ -3010,224 +2920,6 @@ fn native_error_envelope(code: ErrorCode, encoded: &[u8]) -> Vec<u8> {
     .unwrap_or_default()
 }
 
-/// Runs the S-EXEC-001 App-identity guard probe under the published guard scope.
-#[cfg(unix)]
-fn verify_app_guard(guard_path: &Path) -> Result<bool, DomainError> {
-    if guard::is_quarantined() {
-        return Ok(false);
-    }
-    if !guard_path.is_absolute() || !guard_path.is_file() {
-        return Err(DomainError::new(
-            ErrorCode::NotFound,
-            "app_guard_probe_guard_path",
-        ));
-    }
-    let exited = run_guard_probe(guard_path, GuardProbe::ChildExit)?;
-    let owner_lost = run_guard_probe(guard_path, GuardProbe::OwnerLost)?;
-    Ok(exited && owner_lost)
-}
-
-#[cfg(unix)]
-fn probe_app_guard(host: &NativeHost, guard_path: &Path) -> Result<bool, DomainError> {
-    let clean = verify_app_guard(guard_path)?;
-    if clean {
-        host.runtime.register_capability(
-            "execution.app_guard",
-            Availability {
-                state: CapabilityState::Available,
-                reason: None,
-            },
-            host._lease.live().host_generation,
-            true,
-        )?;
-    }
-    Ok(clean)
-}
-
-fn quarantine_app_guard(host: &NativeHost) -> Result<(), DomainError> {
-    // The scope gate and the Runtime readiness withdrawal are independent, so an absent
-    // scope still withdraws this host's execution surfaces.
-    if let Ok(scope) = guard::scope() {
-        scope.quarantine();
-    }
-    quarantine_runtime(&host.runtime)
-}
-
-fn quarantine_runtime(runtime: &ApkRuntimeVertical) -> Result<(), DomainError> {
-    runtime.set_unavailable("CLEANUP_UNVERIFIED")?;
-    runtime.withdraw_capabilities(&["execution.app_guard"], "CLEANUP_UNVERIFIED")
-}
-
-#[cfg(unix)]
-#[derive(Clone, Copy)]
-enum GuardProbe {
-    ChildExit,
-    OwnerLost,
-}
-
-/// S-EXEC-002: startup probe evidence stays outside the recovery-read `execution-guards/`.
-#[cfg(unix)]
-const GUARD_PROBE_DIRECTORY: &str = "execution-guard-probes";
-
-#[cfg(unix)]
-static GUARD_PROBE_LOCK: Mutex<()> = Mutex::new(());
-
-#[cfg(unix)]
-fn run_guard_probe(guard_path: &Path, mode: GuardProbe) -> Result<bool, DomainError> {
-    use persistence::GuardCleanCause;
-    use std::{
-        fs::OpenOptions,
-        io::Write,
-        os::{
-            fd::{AsRawFd, FromRawFd},
-            unix::fs::OpenOptionsExt,
-        },
-        process::Command,
-        thread,
-        time::{Duration, Instant},
-    };
-
-    let scope = guard::scope()?;
-    if !guard_proof_capacity_available(scope.base()) {
-        return Err(DomainError::new(
-            ErrorCode::ResourceLimit,
-            "app_guard_probe_proof_capacity",
-        ));
-    }
-    let _probe = GUARD_PROBE_LOCK
-        .lock()
-        .map_err(|_| DomainError::new(ErrorCode::InternalError, "guard probe lock failed"))?;
-    // Only this lease-holding App process probes, so every earlier entry belongs to a finished or
-    // killed probe; none of it is execution evidence (S-EXEC-002).
-    let probe_root = scope.base().join(GUARD_PROBE_DIRECTORY);
-    match fs::remove_dir_all(&probe_root) {
-        Ok(()) => sync_directory(scope.base())?,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(io_error(error)),
-    }
-    let execution_id = new_uuid()?;
-    let directory = probe_root.join(scope.boot_id().as_str());
-    fs::create_dir_all(&directory).map_err(io_error)?;
-    sync_directory(&directory)?;
-    let proof_path = directory.join(format!("{}.proof", execution_id.as_str()));
-    let marker_path = directory.join(format!("{}.ready", execution_id.as_str()));
-    let mut proof = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&proof_path)
-        .map_err(io_error)?;
-    let identity = GuardIdentity {
-        runtime_epoch: scope.runtime_epoch().clone(),
-        runtime_instance_id: scope.runtime_instance_id().clone(),
-        execution_id: execution_id.clone(),
-        boot_id: scope.boot_id().clone(),
-    };
-    proof
-        .write_all(&encode_guard_frame(&identity)?)
-        .map_err(io_error)?;
-    proof.sync_all().map_err(io_error)?;
-
-    let mut pipe = [0_i32; 2];
-    if unsafe { libc::pipe2(pipe.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
-        return Err(io_error(std::io::Error::last_os_error()));
-    }
-    let lifetime_read = unsafe { fs::File::from_raw_fd(pipe[0]) };
-    let lifetime_write = unsafe { fs::File::from_raw_fd(pipe[1]) };
-    make_inheritable(proof.as_raw_fd())?;
-    make_inheritable(lifetime_read.as_raw_fd())?;
-    let mut command = Command::new(guard_path);
-    command
-        .arg("--proof-fd")
-        .arg(proof.as_raw_fd().to_string())
-        .arg("--lifetime-fd")
-        .arg(lifetime_read.as_raw_fd().to_string())
-        .arg("--")
-        .arg(guard_path);
-    match mode {
-        GuardProbe::ChildExit => {
-            command.arg("--probe-child");
-        }
-        GuardProbe::OwnerLost => {
-            command.arg("--probe-owner-death-child").arg(&marker_path);
-        }
-    }
-    let spawn_phase = match mode {
-        GuardProbe::ChildExit => "app_guard_probe_child_exit_spawn",
-        GuardProbe::OwnerLost => "app_guard_probe_owner_lost_spawn",
-    };
-    let mut child = command
-        .spawn()
-        .map_err(|error| DomainError::os(ErrorCode::ExecutionFailed, spawn_phase, &error))?;
-    drop(proof);
-    drop(lifetime_read);
-    let mut lifetime_write = Some(lifetime_write);
-    if matches!(mode, GuardProbe::OwnerLost) {
-        let marker_deadline = Instant::now() + Duration::from_millis(2_000);
-        while !marker_path.exists() && Instant::now() < marker_deadline {
-            thread::sleep(Duration::from_millis(10));
-        }
-        if !marker_path.exists() {
-            drop(lifetime_write.take());
-            return Err(DomainError::new(
-                ErrorCode::Timeout,
-                "app_guard_probe_owner_marker_timeout",
-            ));
-        }
-        drop(lifetime_write.take());
-    }
-    let deadline = Instant::now() + Duration::from_millis(8_000);
-    let exited = loop {
-        if let Some(status) = child.try_wait().map_err(io_error)? {
-            break status.success();
-        }
-        if Instant::now() >= deadline {
-            drop(lifetime_write.take());
-            return Err(DomainError::new(
-                ErrorCode::Timeout,
-                "app_guard_probe_guard_exit_timeout",
-            ));
-        }
-        thread::sleep(Duration::from_millis(20));
-    };
-    drop(lifetime_write.take());
-    let bytes = match fs::read(&proof_path) {
-        Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
-        Err(error) => return Err(io_error(error)),
-    };
-    let recovery = classify_guard_proof(
-        scope.boot_id().as_str(),
-        scope.boot_id(),
-        &identity,
-        &bytes,
-        &ProcFacts,
-    )?;
-    let expected = match mode {
-        GuardProbe::ChildExit => GuardCleanCause::Exited,
-        GuardProbe::OwnerLost => GuardCleanCause::OwnerLost,
-    };
-    let clean = matches!(
-        recovery,
-        GuardRecovery::Clean { clean: Some(ref value) } if value.cause == expected
-    ) && exited;
-    if clean {
-        fs::remove_file(proof_path).map_err(io_error)?;
-        if marker_path.exists() {
-            fs::remove_file(marker_path).map_err(io_error)?;
-        }
-        sync_directory(&directory)?;
-    } else {
-        let phase = match mode {
-            GuardProbe::ChildExit => "app_guard_probe_child_exit_verification",
-            GuardProbe::OwnerLost => "app_guard_probe_owner_lost_verification",
-        };
-        return Err(DomainError::new(ErrorCode::CancelFailed, phase));
-    }
-    Ok(clean)
-}
-
 #[cfg(unix)]
 fn guard_proof_capacity_available(base: &Path) -> bool {
     let root = base.join("execution-guards");
@@ -3281,24 +2973,17 @@ fn guard_proof_capacity_available(base: &Path) -> bool {
             .is_some_and(|value| value <= persistence::GUARD_PROOF_TOTAL_LIMIT_BYTES)
 }
 
-#[cfg(not(unix))]
-fn probe_app_guard(_host: &NativeHost, _guard_path: &Path) -> Result<bool, DomainError> {
-    Ok(false)
-}
-
-#[cfg(not(unix))]
-fn verify_app_guard(_guard_path: &Path) -> Result<bool, DomainError> {
-    Ok(false)
-}
-
-#[cfg(unix)]
-fn make_inheritable(fd: std::os::fd::RawFd) -> Result<(), DomainError> {
-    let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
-    if flags < 0 || unsafe { libc::fcntl(fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC) } < 0 {
-        Err(io_error(std::io::Error::last_os_error()))
-    } else {
-        Ok(())
+fn quarantine_app_guard(host: &NativeHost) -> Result<(), DomainError> {
+    // The scope gate and the Runtime readiness withdrawal are independent, so an absent
+    // scope still withdraws this host's execution surfaces.
+    if let Ok(scope) = guard::scope() {
+        scope.quarantine();
     }
+    quarantine_runtime(&host.runtime)
+}
+
+fn quarantine_runtime(runtime: &ApkRuntimeVertical) -> Result<(), DomainError> {
+    runtime.set_unavailable("CLEANUP_UNVERIFIED")
 }
 
 #[cfg(unix)]
@@ -3357,8 +3042,8 @@ mod tests {
     }
 
     fn recovery_task(task_id: u64, execution_id: u64, instance_id: u64) -> persistence::StoredTask {
-        use contract::{ExecutionClass, MotherTool, RunAs, TaskState};
-        use persistence::StoredRoute;
+        use contract::{ExecutionClass, MotherTool, TaskState};
+        use persistence::{StoredNetworkRoute, StoredRoute};
         use runtime::{ExecutionPayload, ExecutorRecord, ProviderToken};
 
         persistence::StoredTask {
@@ -3367,7 +3052,7 @@ mod tests {
             execution_id: id(execution_id),
             state: TaskState::Created,
             cancel_requested: false,
-            tool: MotherTool::Command,
+            tool: MotherTool::Network,
             action: "run".to_owned(),
             created_at: "2026-09-09T00:00:00.000Z".to_owned(),
             started_at: None,
@@ -3384,8 +3069,12 @@ mod tests {
                     runtime_instance_id: id(instance_id),
                 },
             }),
-            route: Some(StoredRoute::Command { run_as: RunAs::App }),
-            payload: Some(ExecutionPayload::OpaqueOperation("command.run".to_owned())),
+            route: Some(StoredRoute::Network {
+                route: StoredNetworkRoute::InspectOrDiagnose,
+            }),
+            payload: Some(ExecutionPayload::OpaqueOperation(
+                "network.diagnose".to_owned(),
+            )),
             result: None,
             error: None,
             reserved_bytes: runtime::RESERVE_FLOOR_BYTES,
@@ -3398,8 +3087,8 @@ mod tests {
         execution_id: u64,
         instance_id: u64,
     ) -> persistence::RequestRecord {
-        use contract::{ExecutionClass, RunAs};
-        use persistence::{StoredRoute, StoredSynchronousExecution};
+        use contract::ExecutionClass;
+        use persistence::{StoredNetworkRoute, StoredRoute, StoredSynchronousExecution};
         use runtime::{ExecutionPayload, ExecutorRecord, ProviderToken, SynchronousExecutionState};
 
         persistence::RequestRecord {
@@ -3409,7 +3098,7 @@ mod tests {
             task_id: None,
             synchronous_execution: Some(StoredSynchronousExecution {
                 execution_id: id(execution_id),
-                operation: "command.run".to_owned(),
+                operation: "network.diagnose".to_owned(),
                 state: SynchronousExecutionState::Running,
                 ended_at: None,
                 executor: ExecutorRecord {
@@ -3423,8 +3112,10 @@ mod tests {
                         runtime_instance_id: id(instance_id),
                     },
                 },
-                route: StoredRoute::Command { run_as: RunAs::App },
-                payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+                route: StoredRoute::Network {
+                    route: StoredNetworkRoute::InspectOrDiagnose,
+                },
+                payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
                 result: None,
                 error: None,
                 reserved_bytes: runtime::RESERVE_FLOOR_BYTES,
@@ -3561,17 +3252,14 @@ mod tests {
             client_id,
             execution_id,
             "/system/bin/sh",
-            &[
-                "-c".to_owned(),
-                "x".repeat(runtime::COMMAND_MAX_COMMAND_BYTES)
-            ],
+            &["-c".to_owned(), "x".repeat(MAX_SHIZUKU_ARGUMENT_BYTES)],
             "/",
         ));
         assert!(!validate_shizuku_arguments(
             client_id,
             execution_id,
             "/system/bin/id",
-            &["x".repeat(runtime::COMMAND_MAX_COMMAND_BYTES + 1)],
+            &["x".repeat(MAX_SHIZUKU_ARGUMENT_BYTES + 1)],
             "/",
         ));
         assert!(!validate_shizuku_arguments(

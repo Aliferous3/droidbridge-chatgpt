@@ -36,9 +36,6 @@ fn d5000() -> u64 {
 fn d10k() -> u64 {
     10_000
 }
-fn d30s() -> u64 {
-    30_000
-}
 fn d60s() -> u64 {
     60_000
 }
@@ -71,11 +68,6 @@ pub enum PublicPayload {
     Filesystem {
         #[serde(flatten)]
         call: FilesystemCall,
-    },
-    #[serde(rename = "command")]
-    Command {
-        #[serde(flatten)]
-        call: CommandCall,
     },
     #[serde(rename = "network")]
     Network {
@@ -134,7 +126,6 @@ impl<'de> Deserialize<'de> for PublicPayload {
         match tool.as_str() {
             "context" => decode!(ContextCall, Context),
             "filesystem" => decode!(FilesystemCall, Filesystem),
-            "command" => decode!(CommandCall, Command),
             "network" => decode!(NetworkCall, Network),
             "visual" => decode!(VisualCall, Visual),
             "android" => decode!(AndroidCall, Android),
@@ -566,68 +557,6 @@ pub struct ArchiveEntry {
     pub entry_type: ArchiveEntryType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<u64>,
-}
-
-string_enum!(RunAs{App=>"app",Shell=>"shell",Root=>"root"});
-string_enum!(CommandTerminalState{Completed=>"completed",Failed=>"failed"});
-string_enum!(CommandFailureCode{ExecutionFailed=>"EXECUTION_FAILED",Timeout=>"TIMEOUT"});
-#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, tag = "action", content = "input")]
-pub enum CommandCall {
-    #[serde(rename = "run")]
-    Run(CommandRunInput),
-}
-#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CommandRunInput {
-    /// The shell command, at most 32768 bytes of UTF-8. Every process it starts stays in its
-    /// process group (setsid and setpgid fail with EPERM) and is stopped when the command exits,
-    /// times out or is cancelled, background (`&`, `nohup`) ones included: nothing it starts
-    /// outlives it.
-    pub command: String,
-    /// Required execution identity. Choose app, shell or root according to the current capabilities; the result reports requested_run_as and actual_run_as.
-    pub run_as: RunAs,
-    /// An absolute working directory, at most 4096 bytes of UTF-8.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cwd: Option<String>,
-    /// Text written to the command's standard input, at most 65536 bytes of UTF-8.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stdin: Option<String>,
-    /// The deadline in milliseconds, 30000 unless set: at most 150000 for app and shell and
-    /// 3600000 for root. At the deadline the command and every process it started are stopped.
-    #[serde(default = "d30s")]
-    #[schemars(range(min = 1000, max = 3600000))]
-    pub timeout_ms: u64,
-    /// Maximum bytes collected for command output. Inspect stdout_truncated and stderr_truncated, and use returned references when present.
-    #[serde(default = "d64k")]
-    #[schemars(range(min = 1024, max = 1048576))]
-    pub max_output_bytes: u64,
-    /// Return a task_id immediately. Poll task_control.get for the terminal state, then inspect result.state and result.exit_code.
-    #[serde(default)]
-    pub as_task: bool,
-}
-#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CommandResult {
-    pub state: CommandTerminalState,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub failure_code: Option<CommandFailureCode>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub exit_code: Option<i32>,
-    pub requested_run_as: RunAs,
-    pub actual_run_as: RunAs,
-    pub execution_class: ExecutionClass,
-    pub duration_ms: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stdout: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stdout_ref: Option<String>,
-    pub stdout_truncated: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stderr: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stderr_ref: Option<String>,
-    pub stderr_truncated: bool,
 }
 
 #[derive(Clone, Debug, JsonSchema, PartialEq, Serialize, Deserialize)]
@@ -1638,10 +1567,9 @@ pub enum AutomationCall {
     #[serde(rename = "run")]
     Run(AutomationRunInput),
 }
-pub const ROOT_TOOL_ORDER: [MotherTool; 8] = [
+pub const ROOT_TOOL_ORDER: [MotherTool; 7] = [
     MotherTool::Context,
     MotherTool::Filesystem,
-    MotherTool::Command,
     MotherTool::Network,
     MotherTool::Visual,
     MotherTool::Android,
@@ -1656,7 +1584,7 @@ pub struct ActionSpec {
     pub capability_requirement: &'static str,
 }
 
-pub const ACTION_SPECS: [ActionSpec; 31] = [
+pub const ACTION_SPECS: [ActionSpec; 30] = [
     ActionSpec {
         tool: "context",
         action: "status",
@@ -1703,12 +1631,6 @@ pub const ACTION_SPECS: [ActionSpec; 31] = [
         tool: "filesystem",
         action: "archive",
         automation_compatible: false,
-        capability_requirement: "dynamic",
-    },
-    ActionSpec {
-        tool: "command",
-        action: "run",
-        automation_compatible: true,
         capability_requirement: "dynamic",
     },
     ActionSpec {

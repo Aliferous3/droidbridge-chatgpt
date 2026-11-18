@@ -563,8 +563,9 @@ where
         })?;
         let child = primitive_execution(execution).map_err(clean_failure)?;
         let descriptor = descriptor.map(|(role, file)| (role, raw_fd(file)));
-        let result = crate::command::run_shizuku_guarded(&child, claim, &payload, descriptor)
-            .map_err(clean_failure)?;
+        let result =
+            crate::shizuku_process::run_shizuku_guarded(&child, claim, &payload, descriptor)
+                .map_err(clean_failure)?;
         if !result.descriptors.is_empty() {
             return Err(clean_failure(DomainError::new(
                 ErrorCode::IoError,

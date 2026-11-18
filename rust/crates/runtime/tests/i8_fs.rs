@@ -1284,9 +1284,8 @@ fn capability(host: RuntimeHost) -> CapabilitySnapshot {
             magisk_clipboard: grant.clone(),
             magisk_notifications: grant.clone(),
             magisk_wake_alarm: grant.clone(),
-            execution_app_guard: grant.clone(),
             execution_shell_guard: grant.clone(),
-            execution_root_guard: grant,
+            execution_root_guard: grant.clone(),
         },
         context: CapabilityContext {
             sdk_int: 37,

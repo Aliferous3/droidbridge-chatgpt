@@ -66,7 +66,6 @@ fn capability() -> CapabilitySnapshot {
             magisk_clipboard: available(),
             magisk_notifications: available(),
             magisk_wake_alarm: available(),
-            execution_app_guard: available(),
             execution_shell_guard: available(),
             execution_root_guard: available(),
         },
@@ -236,12 +235,19 @@ async fn admitted(core: &TestCore, action: Value) -> AdmittedAutomationExecution
     }
 }
 
-fn command_call(as_task: bool) -> Value {
+fn diagnose_call() -> Value {
     json!({
-        "type": "call", "tool": "command", "action": "run",
+        "type": "call", "tool": "network", "action": "diagnose",
+        "args": {"test": "connectivity"},
+    })
+}
+
+fn download_call() -> Value {
+    json!({
+        "type": "call", "tool": "filesystem", "action": "download",
         "args": {
-            "command": "true", "run_as": "app", "timeout_ms": 1_000,
-            "max_output_bytes": 1_024, "as_task": as_task,
+            "url": "https://example.com/file",
+            "destination": {"type": "path", "value": "/data/local/tmp/file"},
         },
     })
 }
@@ -252,7 +258,7 @@ async fn i9_g05_calls_run_through_the_ordinary_public_resolver() {
     let execution = admitted(
         &core,
         json!({"type": "sequence", "children": [
-            command_call(false),
+            diagnose_call(),
             {"type": "set_state", "key": "done", "value": true},
         ]}),
     )
@@ -273,19 +279,22 @@ async fn i9_g05_calls_run_through_the_ordinary_public_resolver() {
         .unwrap();
     assert_eq!(summary.state, AutomationExecutionState::Completed);
 
-    // The Call was admitted like any public command.run request: same executor resolution,
+    // The Call was admitted like any public network.diagnose request: same executor resolution,
     // same synchronous execution and retained request record, no Automation-specific path.
     let started = executions.started();
     assert_eq!(started.len(), 1);
     assert!(matches!(
         started[0].payload,
-        ExecutionPayload::CommandCall(_)
+        ExecutionPayload::NetworkCall(_)
     ));
     assert_eq!(started[0].executor.execution_class, ExecutionClass::App);
     assert!(started[0].task_id.is_none());
     let stored = persistence.snapshot();
     assert_eq!(stored.synchronous_executions.len(), 1);
-    assert_eq!(stored.synchronous_executions[0].operation, "command.run");
+    assert_eq!(
+        stored.synchronous_executions[0].operation,
+        "network.diagnose"
+    );
     assert_eq!(
         stored.automations[0].automation.state.get("done"),
         Some(&ScalarValue::Boolean(true))
@@ -322,7 +331,7 @@ async fn i9_g09_budget_expiry_cancels_the_awaited_child_task_before_settling() {
     let (core, persistence, executions) = make_core();
     executions.set_cancel_cleanup_verified(true);
     let gate = executions.pause_before_effect();
-    let execution = admitted(&core, command_call(true)).await;
+    let execution = admitted(&core, download_call()).await;
     let clock = FakeClock::at(DUE);
     clock.sleep_advance_ms.store(1_800_000, Ordering::SeqCst);
 

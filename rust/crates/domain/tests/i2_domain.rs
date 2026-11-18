@@ -1,7 +1,7 @@
 use contract::{
-    Automation, AutomationAction, AutomationCommandCall, AutomationCompatibleCall,
-    AutomationCondition, AutomationTrigger, Availability, CapabilityState, CommandRunInput,
-    ConditionOperator, ConditionSource, ErrorCode, ExecutionClass, GrantFacts, RunAs, RuntimeHost,
+    Automation, AutomationAction, AutomationCompatibleCall, AutomationCondition,
+    AutomationNetworkCall, AutomationTrigger, Availability, CapabilityState, ConditionOperator,
+    ConditionSource, ErrorCode, ExecutionClass, GrantFacts, NetworkDiagnoseInput, RuntimeHost,
     RuntimeReadiness, ScalarValue, TaskState, UuidV4,
 };
 use domain::{
@@ -40,7 +40,6 @@ fn grants(state: CapabilityState) -> GrantFacts {
         magisk_clipboard: availability(state),
         magisk_notifications: availability(state),
         magisk_wake_alarm: availability(state),
-        execution_app_guard: availability(state),
         execution_shell_guard: availability(state),
         execution_root_guard: availability(state),
     }
@@ -152,15 +151,6 @@ fn i2_g01_domain_reducers_and_resolver_preserve_authority() {
     assert_eq!(facts.shizuku, Unavailable);
     assert_eq!(admitted.fence().host_generation, 3);
     assert_eq!(admitted.capability_generation(), 1);
-
-    let root_error = resolve_executor(
-        RuntimeHost::ApkRuntime,
-        fence(),
-        resolver_facts(Available),
-        ExecutorRequest::Command(RunAs::Root),
-    )
-    .unwrap_err();
-    assert_eq!(root_error.code, ErrorCode::RunAsUnavailable);
 
     let mut task = TaskLifecycle::new();
     assert_eq!(task.apply(TaskEvent::Queue).unwrap(), TaskState::Queued);
@@ -303,15 +293,11 @@ fn automation_conditions_are_strict_and_missing_values_do_not_coerce() {
 #[test]
 fn automation_calls_reuse_public_input_bounds() {
     let invalid = automation(AutomationAction::Call {
-        call: AutomationCompatibleCall::Command {
-            call: AutomationCommandCall::Run(CommandRunInput {
-                command: "true".to_owned(),
-                run_as: RunAs::App,
-                cwd: None,
-                stdin: None,
-                timeout_ms: 150_001,
-                max_output_bytes: 1024,
-                as_task: false,
+        call: AutomationCompatibleCall::Network {
+            call: AutomationNetworkCall::Diagnose(NetworkDiagnoseInput::Tcp {
+                host: "example.invalid".to_owned(),
+                port: 0,
+                timeout_ms: 5_000,
             }),
         },
         on_failure: Default::default(),

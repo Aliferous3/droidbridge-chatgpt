@@ -44,8 +44,9 @@ class I14McpFacadeGateTest {
                 .let { tools -> (0 until tools.length()).map { tools.getJSONObject(it).getString("name") } }
             assertTrue(toolNames.toString(), "context" in toolNames)
             assertTrue(toolNames.toString(), "visual" in toolNames)
-            assertTrue(toolNames.toString(), "command" in toolNames)
+            assertTrue(toolNames.toString(), "network" in toolNames)
             assertTrue(toolNames.toString(), "task_control" in toolNames)
+            assertFalse("the command tool is not part of this build: $toolNames", "command" in toolNames)
 
             val status = structured(
                 call(endpoint, token, 902, "context", "status", JSONObject().put("detail", "full")),
@@ -70,50 +71,70 @@ class I14McpFacadeGateTest {
                 structured(text, "visual.interact").getString("code"),
             )
 
-            val commandStarted = SystemClock.elapsedRealtime()
-            val command = served(
+            val probeStarted = SystemClock.elapsedRealtime()
+            served(
                 call(
-                    endpoint, token, 904, "command", "run",
-                    JSONObject()
-                        .put("command", "printf black-box")
-                        .put("run_as", "app"),
+                    endpoint, token, 904, "network", "diagnose",
+                    JSONObject().put("test", "connectivity"),
                 ),
-                "command.run",
+                "network.diagnose",
             )
-            val commandElapsed = SystemClock.elapsedRealtime() - commandStarted
-            assertEquals(command.toString(), "completed", command.getString("state"))
-            assertEquals(command.toString(), "black-box", command.getString("stdout"))
-            assertTrue(
-                "command.run retained a fixed delay: result=$command, wall=${commandElapsed}ms",
-                command.getLong("duration_ms") < FAST_COMMAND_DEADLINE_MS &&
-                    commandElapsed < FAST_COMMAND_WALL_DEADLINE_MS,
-            )
-            println(
-                "black-box command.run: duration_ms=${command.getLong("duration_ms")}, " +
-                    "wall_ms=$commandElapsed",
-            )
+            val probeElapsed = SystemClock.elapsedRealtime() - probeStarted
+            println("black-box network.diagnose: wall_ms=$probeElapsed")
 
             var taskId: String? = null
             try {
-                val accepted = served(
+                val saved = served(
                     call(
-                        endpoint, token, 905, "command", "run",
+                        endpoint, token, 905, "automation", "save",
                         JSONObject()
-                            .put("command", "sleep 30")
-                            .put("run_as", "app")
-                            .put("timeout_ms", 60_000)
-                            .put("as_task", true),
+                            .put("name", "gate-cancel")
+                            .put("enabled", true)
+                            .put(
+                                "trigger",
+                                JSONObject().put("type", "interval").put("every_ms", 60_000),
+                            )
+                            .put(
+                                "action",
+                                JSONObject().put("type", "delay").put("duration_ms", 60_000),
+                            ),
                     ),
-                    "command.run",
+                    "automation.save",
                 )
-                val activeTaskId = accepted.getString("task_id")
+                val automationId = saved.getString("automation_id")
+                served(
+                    call(
+                        endpoint, token, 906, "automation", "run",
+                        JSONObject().put("automation_id", automationId),
+                    ),
+                    "automation.run",
+                )
+                var activeTaskId: String? = null
+                val historyDeadline = SystemClock.elapsedRealtime() + SHIZUKU_TIMEOUT_MS
+                while (activeTaskId == null) {
+                    val got = served(
+                        call(
+                            endpoint, token, 907, "automation", "get",
+                            JSONObject().put("automation_id", automationId),
+                        ),
+                        "automation.get",
+                    )
+                    val history = got.getJSONArray("history")
+                    if (history.length() > 0) {
+                        activeTaskId = history.getJSONObject(0).getString("task_id")
+                    }
+                    if (SystemClock.elapsedRealtime() >= historyDeadline) {
+                        throw AssertionError("the Automation run never produced an execution: $got")
+                    }
+                    delay(250)
+                }
                 taskId = activeTaskId
                 awaitTaskState(endpoint, token, activeTaskId, setOf("running"))
 
                 val cancelStarted = SystemClock.elapsedRealtime()
                 served(
                     call(
-                        endpoint, token, 906, "task_control", "cancel",
+                        endpoint, token, 908, "task_control", "cancel",
                         JSONObject().put("task_id", activeTaskId),
                     ),
                     "task_control.cancel",
@@ -130,7 +151,7 @@ class I14McpFacadeGateTest {
             } finally {
                 taskId?.let { active ->
                     call(
-                        endpoint, token, 907, "task_control", "cancel",
+                        endpoint, token, 909, "task_control", "cancel",
                         JSONObject().put("task_id", active),
                     )
                 }
@@ -156,24 +177,7 @@ class I14McpFacadeGateTest {
                 "available",
                 status.getJSONObject("grants").getJSONObject("shizuku.shell").getString("state"),
             )
-            // The grant arrives before DroidBridge's own Shizuku user service does, and a shell
-            // command needs that service; the Runtime reports it as the command.shell capability.
-            val shell = awaitCapability(endpoint, token, "command.shell", 918)
-            assertEquals(
-                shell.toString(),
-                "available",
-                shell.getJSONObject("capabilities").getJSONObject("command.shell").getString("state"),
-            )
-            val shellProbe = served(
-                call(
-                    endpoint, token, 919, "command", "run",
-                    JSONObject().put("command", "printf ready").put("run_as", "shell"),
-                ),
-                "command.run",
-            )
-            assertEquals(shellProbe.toString(), "ready", shellProbe.getString("stdout"))
-
-            cleanBlackBoxSharedTargets(endpoint, token, 921)
+            cleanBlackBoxSharedTargets(endpoint, token, 918)
             val absent = call(
                 endpoint, token, 922, "filesystem", "manage",
                 JSONObject()
@@ -198,19 +202,16 @@ class I14McpFacadeGateTest {
                     ),
                     "filesystem.manage",
                 )
-                val shellCreated = served(
+                served(
                     call(
-                        endpoint, token, 925, "command", "run",
+                        endpoint, token, 925, "filesystem", "write",
                         JSONObject()
-                            .put(
-                                "command",
-                                "printf shell-view > $BLACK_BOX_SHELL_FILE",
-                            )
-                            .put("run_as", "shell"),
+                            .put("mode", "create")
+                            .put("content", "shell-view")
+                            .put("target", path(BLACK_BOX_SHELL_FILE)),
                     ),
-                    "command.run",
+                    "filesystem.write",
                 )
-                assertEquals(shellCreated.toString(), "completed", shellCreated.getString("state"))
 
                 val directory = served(
                     call(
@@ -228,20 +229,19 @@ class I14McpFacadeGateTest {
                     },
                 )
                 delete(endpoint, token, 927, BLACK_BOX_SHELL_FILE)
-                val shellObservedDelete = served(
-                    call(
-                        endpoint, token, 928, "command", "run",
-                        JSONObject()
-                            .put(
-                                "command",
-                                "test ! -e $BLACK_BOX_SHELL_FILE && printf absent",
-                            )
-                            .put("run_as", "shell"),
-                    ),
-                    "command.run",
+                val observedAbsent = call(
+                    endpoint, token, 928, "filesystem", "inspect",
+                    JSONObject().put("target", path(BLACK_BOX_SHELL_FILE)),
                 )
-                assertEquals(shellObservedDelete.toString(), "completed", shellObservedDelete.getString("state"))
-                assertEquals(shellObservedDelete.toString(), "absent", shellObservedDelete.getString("stdout"))
+                assertTrue(
+                    observedAbsent.toString(),
+                    observedAbsent.getJSONObject("result").getBoolean("isError"),
+                )
+                assertEquals(
+                    observedAbsent.toString(),
+                    "NOT_FOUND",
+                    structured(observedAbsent, "filesystem.inspect").getString("code"),
+                )
 
                 served(
                     call(
@@ -811,20 +811,9 @@ class I14McpFacadeGateTest {
     )
 
     private fun cleanBlackBoxSharedTargets(endpoint: String, token: String, id: Int) {
-        val cleaned = served(
-            call(
-                endpoint, token, id, "command", "run",
-                JSONObject()
-                    .put(
-                        "command",
-                        "rm -rf $BLACK_BOX_SHARED_DIRECTORY $BLACK_BOX_EXTRACT_DESTINATION " +
-                            BLACK_BOX_ARCHIVE,
-                    )
-                    .put("run_as", "shell"),
-            ),
-            "command.run",
-        )
-        assertEquals(cleaned.toString(), "completed", cleaned.getString("state"))
+        deleteTree(endpoint, token, id, BLACK_BOX_SHARED_DIRECTORY)
+        deleteTree(endpoint, token, id + 1, BLACK_BOX_EXTRACT_DESTINATION)
+        deleteIfPresent(endpoint, token, id + 2, BLACK_BOX_ARCHIVE)
     }
 
     private fun delete(endpoint: String, token: String, id: Int, value: String) {

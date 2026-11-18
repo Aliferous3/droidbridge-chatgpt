@@ -35,7 +35,6 @@ use runtime::{
     NetworkInspectSettlement, NetworkPrimitiveOutcome, NetworkPrimitivePort,
     NetworkPrimitiveRequest, NetworkPrimitiveSettlement, PCAP_LINKTYPE_ETHERNET, PCAP_LINKTYPE_RAW,
     PortFuture, ProviderToken, RecoveryProof, RuntimeCore, TaskAdmission,
-    UnavailableExecutionDelegate,
     fakes::{FakeArtifacts, FakeCapabilities, FakeHostControl, FakePersistence},
     network_dns_probe, network_executor_request, network_settlement_bound_bytes,
     network_source_plan, network_tcp_probe, network_tls_client_config, network_tls_probe,
@@ -141,7 +140,6 @@ fn grant_facts(facts: Facts) -> GrantFacts {
         magisk_clipboard: availability(state),
         magisk_notifications: availability(state),
         magisk_wake_alarm: availability(state),
-        execution_app_guard: availability(state),
         execution_shell_guard: availability(state),
         execution_root_guard: availability(state),
     }
@@ -490,7 +488,7 @@ type NetworkSurface = NativeNetworkExecutionSurface<FakeArtifacts, FakeCapabilit
 type Core = RuntimeCore<
     FakePersistence,
     FakeArtifacts,
-    CompositeExecutionSurface<NoFilesystem, UnavailableExecutionDelegate, NetworkSurface>,
+    CompositeExecutionSurface<NoFilesystem, NetworkSurface>,
     FakeCapabilities,
     FakeHostControl,
 >;

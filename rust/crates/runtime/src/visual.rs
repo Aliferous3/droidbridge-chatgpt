@@ -6,7 +6,7 @@ use crate::{
     ExecutorRecord, FilesystemPreflightPort, HostControlPort, LocalExecutionClaim,
     LocalExecutionClaims, PersistencePort, PortFuture, RuntimeCore, SynchronousAdmission,
     UI_ENVELOPE_LIMIT_BYTES,
-    command::{execution_failure, execution_fence, new_uuid},
+    execution::{execution_failure, execution_fence, new_uuid},
     resolve_filesystem_executor,
 };
 use contract::{

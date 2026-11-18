@@ -43,7 +43,6 @@ fn capability(state: CapabilityState, readiness: RuntimeReadiness) -> Capability
             magisk_clipboard: fact(state),
             magisk_notifications: fact(state),
             magisk_wake_alarm: fact(state),
-            execution_app_guard: fact(state),
             execution_shell_guard: fact(state),
             execution_root_guard: fact(state),
         },
@@ -119,10 +118,9 @@ async fn catalog(core: &TestCore, request_id: u64, input: Value, admission_open:
     .unwrap()
 }
 
-const ROOT_TOOLS: [&str; 8] = [
+const ROOT_TOOLS: [&str; 7] = [
     "context",
     "filesystem",
-    "command",
     "network",
     "visual",
     "android",
@@ -166,7 +164,6 @@ async fn i10_g03_tool_catalog_is_a_static_table_independent_of_grants() {
         filesystem["siblings"],
         json!([
             "context",
-            "command",
             "network",
             "visual",
             "android",

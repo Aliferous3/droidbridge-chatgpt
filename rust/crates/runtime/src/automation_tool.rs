@@ -183,7 +183,7 @@ fn save(
                 ));
             }
             let automation = Automation {
-                automation_id: crate::command::new_uuid()?,
+                automation_id: crate::execution::new_uuid()?,
                 name: input.name,
                 enabled: input.enabled,
                 trigger: input.trigger,

@@ -1,7 +1,7 @@
-use contract::{ErrorCode, ExecutionClass, MotherTool, RunAs, RuntimeHost, TaskState, UuidV4};
+use contract::{ErrorCode, ExecutionClass, MotherTool, RuntimeHost, TaskState, UuidV4};
 use persistence::{
     ArtifactKind, ArtifactPublish, ArtifactStore, CanonicalState, RequestRecord, ReservationRecord,
-    RuntimeArtifactPort, RuntimeLive, RuntimeOwner, StateStore, StoredRoute,
+    RuntimeArtifactPort, RuntimeLive, RuntimeOwner, StateStore, StoredNetworkRoute, StoredRoute,
     StoredSynchronousExecution, StoredTask,
 };
 use runtime::{
@@ -83,7 +83,7 @@ fn command_task(execution_id: UuidV4) -> CanonicalState {
         execution_id: execution_id.clone(),
         state: TaskState::Created,
         cancel_requested: false,
-        tool: MotherTool::Command,
+        tool: MotherTool::Network,
         action: "run".to_owned(),
         created_at: "2026-09-13T00:00:00.000Z".to_owned(),
         started_at: None,
@@ -100,8 +100,12 @@ fn command_task(execution_id: UuidV4) -> CanonicalState {
                 runtime_instance_id: id(2),
             },
         }),
-        route: Some(StoredRoute::Command { run_as: RunAs::App }),
-        payload: Some(ExecutionPayload::OpaqueOperation("command.run".to_owned())),
+        route: Some(StoredRoute::Network {
+            route: StoredNetworkRoute::InspectOrDiagnose,
+        }),
+        payload: Some(ExecutionPayload::OpaqueOperation(
+            "network.diagnose".to_owned(),
+        )),
         result: None,
         error: None,
         reserved_bytes: RESERVE_FLOOR_BYTES,
@@ -164,7 +168,7 @@ fn i8_cmd_synchronous_artifact_publication_records_only_the_request_owner() {
         task_id: None,
         synchronous_execution: Some(StoredSynchronousExecution {
             execution_id: execution_id.clone(),
-            operation: "command.run".to_owned(),
+            operation: "network.diagnose".to_owned(),
             state: SynchronousExecutionState::Running,
             ended_at: None,
             executor: ExecutorRecord {
@@ -178,8 +182,10 @@ fn i8_cmd_synchronous_artifact_publication_records_only_the_request_owner() {
                     runtime_instance_id: id(2),
                 },
             },
-            route: StoredRoute::Command { run_as: RunAs::App },
-            payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+            route: StoredRoute::Network {
+                route: StoredNetworkRoute::InspectOrDiagnose,
+            },
+            payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
             result: None,
             error: None,
             reserved_bytes: RESERVE_FLOOR_BYTES,

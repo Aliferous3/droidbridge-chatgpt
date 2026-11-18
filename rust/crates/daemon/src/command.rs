@@ -11,9 +11,8 @@ use persistence::{
     classify_guard_proof, encode_guard_frame,
 };
 use runtime::{
-    AdmittedExecution, CommandProcessCause, CommandProcessOutcome, CommandProcessPort,
-    CommandProcessRequest, CommandProcessSettlement, ExecutionFailure, LocalExecutionClaim,
-    validate_command_process_request,
+    CommandProcessCause, CommandProcessOutcome, CommandProcessRequest, CommandProcessSettlement,
+    ExecutionFailure, LocalExecutionClaim,
 };
 use std::{
     fs, io,
@@ -290,18 +289,6 @@ impl RootCommandGuard {
             error: reason,
             cleanup_verified,
         }
-    }
-
-    /// Runs one already-admitted command as this daemon's root identity. The guard owns
-    /// process-group confinement, the deadline signal and the reaping, so the retained
-    /// streams and the cleanup fact have one owner.
-    fn run(
-        &self,
-        execution_id: &UuidV4,
-        request: CommandProcessRequest,
-        claim: &LocalExecutionClaim,
-    ) -> Result<CommandProcessSettlement, ExecutionFailure> {
-        self.run_with_stdout(execution_id, request, claim, None)
     }
 
     /// Runs one fixed S-MAGISK-005 package-shell argument array and returns its bounded
@@ -821,31 +808,6 @@ impl RootCommandGuard {
             }
             thread::sleep(Duration::from_millis(REAP_POLL_MS));
         }
-    }
-}
-
-/// The Magisk Command process port: the daemon's root runner behind the one shared Command
-/// handler.
-#[derive(Clone)]
-pub(crate) struct MagiskCommandProcessPort {
-    root: Arc<RootCommandGuard>,
-}
-
-impl MagiskCommandProcessPort {
-    pub(crate) fn new(root: Arc<RootCommandGuard>) -> Self {
-        Self { root }
-    }
-}
-
-impl CommandProcessPort for MagiskCommandProcessPort {
-    fn run(
-        &self,
-        execution: &AdmittedExecution,
-        request: CommandProcessRequest,
-        claim: &LocalExecutionClaim,
-    ) -> Result<CommandProcessSettlement, ExecutionFailure> {
-        validate_command_process_request(&request, RunAs::Root).map_err(pre_start)?;
-        self.root.run(&execution.execution_id, request, claim)
     }
 }
 

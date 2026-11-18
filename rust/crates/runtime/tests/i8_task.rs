@@ -1,11 +1,11 @@
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
 use contract::{
-    Availability, CapabilityState, ErrorCode, GrantFacts, MotherTool, RunAs, RuntimeHost,
+    Availability, CapabilityState, ErrorCode, GrantFacts, MotherTool, RuntimeHost,
     RuntimeReadiness, TaskControlCall, TaskGetInput, TaskListInput, TaskState, UuidV4,
 };
 use domain::{
-    AdmissionFence, CapabilityContext, DomainError, ExecutorRequest, ProviderGenerations,
-    ResolverFacts, TaskEvent,
+    AdmissionFence, CapabilityContext, DomainError, ExecutorRequest, NetworkRoute,
+    ProviderGenerations, ResolverFacts, TaskEvent,
 };
 use runtime::{
     CapabilityPort, CapabilitySnapshot, ExecutionPayload, PersistencePort, RecoveryProof,
@@ -46,7 +46,6 @@ fn grants(state: CapabilityState) -> GrantFacts {
         magisk_clipboard: availability(state),
         magisk_notifications: availability(state),
         magisk_wake_alarm: availability(state),
-        execution_app_guard: availability(state),
         execution_shell_guard: availability(state),
         execution_root_guard: availability(state),
     }
@@ -168,10 +167,10 @@ fn admission(index: u64, created_at: DateTime<Utc>, now_ms: u64) -> TaskAdmissio
         payload_sha256: format!("{index:064x}"),
         task_id: uuid(0x8300_0000, index),
         execution_id: uuid(0x8400_0000, index),
-        tool: MotherTool::Command,
-        action: "run".to_owned(),
-        route: ExecutorRequest::Command(RunAs::App),
-        payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+        tool: MotherTool::Network,
+        action: "diagnose".to_owned(),
+        route: ExecutorRequest::Network(NetworkRoute::InspectOrDiagnose),
+        payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
         created_at: timestamp(created_at),
         settlement_bound_bytes: 16_384,
         now_ms,
@@ -397,7 +396,7 @@ async fn i8_task_g02_cancellation_has_one_owner_and_durable_truth() {
         .unwrap();
     assert_eq!(cancelled["state"], "cancelled");
     assert_eq!(cancelled["cancel_requested"], true);
-    assert_eq!(cancelled["error"]["operation"], "command.run");
+    assert_eq!(cancelled["error"]["operation"], "network.diagnose");
     assert_eq!(executions.cancelled().len(), 0);
     assert_eq!(persistence.snapshot().dedup.entries().len(), 1);
     let revision = persistence.snapshot().revision;
@@ -529,7 +528,7 @@ async fn i8_task_g02_cancellation_has_one_owner_and_durable_truth() {
         .unwrap();
     assert_eq!(stopped.state, TaskState::Cancelled);
     assert!(stopped.cancel_requested);
-    assert_eq!(stopped.error.unwrap().operation, "command.run");
+    assert_eq!(stopped.error.unwrap().operation, "network.diagnose");
     assert_eq!(clean_executions.cancelled(), vec![clean.execution_id]);
     assert!(clean_host.cleanup_reports().is_empty());
 }
@@ -684,7 +683,7 @@ async fn i8_task_g03_admitted_executor_and_host_generation_never_change() {
         .expect("a request Task keeps its admitted executor");
     assert_eq!(settled_executor, admitted_executor);
     assert_eq!(settled_executor.fence.host_generation, 1);
-    assert_eq!(settled_executor.capability_generation, 2);
+    assert_eq!(settled_executor.capability_generation, 1);
 }
 
 /// A settlement the store refuses is repeated until the store takes writes again; the Task then

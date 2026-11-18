@@ -65,15 +65,6 @@ pub fn derive_capabilities(
     let gated = |state| output(all_required(&[runtime, state]));
     let any = |states: &[CapabilityState]| any_sufficient(states);
     let privileged_path = any(&[grants.magisk_root.state, grants.shizuku_shell.state]);
-    let command_app = all_required(&[
-        context.app_execution_surface,
-        grants.execution_app_guard.state,
-    ]);
-    let command_shell = all_required(&[
-        grants.shizuku_shell.state,
-        grants.execution_shell_guard.state,
-    ]);
-    let command_root = all_required(&[grants.magisk_root.state, grants.execution_root_guard.state]);
     let network_local = if context.sdk_int <= 36 {
         CapabilityState::Available
     } else {
@@ -101,9 +92,6 @@ pub fn derive_capabilities(
     ]);
     Ok(EffectiveCapabilities {
         filesystem_privileged_path: gated(privileged_path),
-        command_app: gated(command_app),
-        command_shell: gated(command_shell),
-        command_root: gated(command_root),
         network_inspect: output(runtime),
         network_internet: output(runtime),
         network_local: gated(network_local),

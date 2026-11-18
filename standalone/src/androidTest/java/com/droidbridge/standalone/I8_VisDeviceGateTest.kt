@@ -568,28 +568,13 @@ class I8_VisDeviceGateTest {
         ).use { it.readBytes().toString(Charsets.UTF_8) }
 
     /**
-     * Runs one `wm` command for the display lever, with everything after `wm` as `arguments`. A
-     * privileged fixture goes through the runtime rather than this process's shell, for the reason
-     * [openSettings] states: opening this run's UiAutomation connection there would make the
-     * provider's own `uiautomator dump` fail for the rest of the run.
+     * Runs one `wm` command for the display lever, with everything after `wm` as `arguments`.
+     * The runtime's privileged command path is gone with the `command` tool, so every fixture
+     * uses this process's own shell; fixtures that need the accessibility service alive rely on
+     * FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES above.
      */
     private fun wm(runtime: IDroidBridgeRuntime, fixture: String, arguments: String): String {
-        if (fixture == ACCESSIBILITY) return shell("wm $arguments")
-        val response = submit(
-            runtime,
-            request(
-                JSONObject()
-                    .put("tool", "command")
-                    .put("action", "run")
-                    .put(
-                        "input",
-                        JSONObject().put("command", "wm $arguments")
-                            .put("run_as", "shell"),
-                    ),
-            ),
-        )
-        assertEquals(response.toString(), "success", response.getString("outcome"))
-        return response.getJSONObject("result").getString("stdout")
+        return shell("wm $arguments")
     }
 
     private fun submit(runtime: IDroidBridgeRuntime, request: ByteArray): JSONObject {

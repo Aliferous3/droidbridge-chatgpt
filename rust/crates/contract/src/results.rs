@@ -43,7 +43,6 @@ pub enum FilesystemArchiveTaskResult {
 pub enum TaskTerminalResult {
     FilesystemDownload(FilesystemDownloadResult),
     FilesystemArchive(FilesystemArchiveTaskResult),
-    Command(CommandResult),
     NetworkCapture(CaptureResult),
     Automation(AutomationTaskResult),
 }

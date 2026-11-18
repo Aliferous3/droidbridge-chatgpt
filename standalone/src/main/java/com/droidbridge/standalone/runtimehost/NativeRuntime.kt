@@ -39,12 +39,9 @@ internal object NativeRuntime {
         transport: String,
     ): Boolean
     external fun nativeAutomationWake(): Boolean
-    external fun nativeProbeAppGuard(guardPath: String): Boolean
     external fun nativePrepareShizukuGuardProof(executionId: String): Int
     external fun nativeSettleShizukuGuardProof(executionId: String): String
     external fun nativeAbortShizukuGuardProof(executionId: String): Boolean
     external fun nativeRecordHostFault(code: String, phase: String): Boolean
-    external fun nativeRunAppCommand(executionId: String, requestJson: String): String?
-    external fun nativeCancelAppCommand(executionId: String): Boolean
     external fun nativeRunI5DeviceBenchmark(benchmarkBase: String): String
 }

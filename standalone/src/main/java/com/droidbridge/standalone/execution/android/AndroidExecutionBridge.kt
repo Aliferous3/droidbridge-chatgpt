@@ -11,8 +11,6 @@ internal open class AndroidExecutionException(
 
 enum class AndroidPrimitive {
     AppPathFsPrimitive,
-    AppProcessStart,
-    AppProcessCancel,
     ContentInspect,
     ContentOpenRead,
     PackageInspect,

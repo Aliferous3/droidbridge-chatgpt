@@ -3,7 +3,7 @@ use crate::{
     ModuleIdentity, ModuleObservation, SourceGeneration, WakeAlarmProbe,
     android::{HelperConnection, HelperPort, MagiskAndroidPort, run_clipboard_child},
     automation_wake::RealtimeAlarmWake,
-    command::{CommandQuarantine, MagiskCommandProcessPort, RootCommandGuard},
+    command::{CommandQuarantine, RootCommandGuard},
     content::RootContentPort,
     helper_family_facts,
     magisk_guard_recovery::{
@@ -21,8 +21,7 @@ use crate::{
 };
 use chrono::{SecondsFormat, Utc};
 use contract::{
-    Availability, CapabilityState, ContextCall, ErrorCode, PublicPayload, RunAs, RuntimeHost,
-    UuidV4,
+    Availability, CapabilityState, ContextCall, ErrorCode, PublicPayload, RuntimeHost, UuidV4,
 };
 use domain::DomainError;
 use persistence::{
@@ -32,8 +31,8 @@ use persistence::{
 use runtime::{
     ApkCapabilityPort, ApkRuntimeVertical, AutomationScheduler, BoottimeClock, CapabilityPort,
     CompositeExecutionSurface, HostControlPort, NativeAndroidExecutionSurface,
-    NativeCommandExecutionSurface, NativeFilesystemExecutionSurface, NativeNetworkExecutionSurface,
-    NativeVisualExecutionSurface, ProviderToken, RecoveryProof, RuntimeCore, VerticalEnvironment,
+    NativeFilesystemExecutionSurface, NativeNetworkExecutionSurface, NativeVisualExecutionSurface,
+    ProviderToken, RecoveryProof, RuntimeCore, VerticalEnvironment,
 };
 use std::{
     fs, io,
@@ -187,8 +186,6 @@ type MagiskCore = RuntimeCore<
 type MagiskFilesystemSurface =
     NativeFilesystemExecutionSurface<RuntimeArtifactPort, ApkCapabilityPort, RootContentPort>;
 
-/// The root edition runs commands as root only.
-const COMMAND_IDENTITIES: &[RunAs] = &[RunAs::Root];
 /// How often a helper family whose probe failed is probed again while the helper lives.
 const FAMILY_REPROBE_EVERY: Duration = Duration::from_secs(60);
 
@@ -210,7 +207,6 @@ type MagiskAndroidSurface = NativeAndroidExecutionSurface<ApkCapabilityPort, Mag
 
 type MagiskExecutionSurface = CompositeExecutionSurface<
     MagiskFilesystemSurface,
-    NativeCommandExecutionSurface<RuntimeArtifactPort, ApkCapabilityPort, MagiskCommandProcessPort>,
     MagiskNetworkSurface,
     MagiskVisualSurface,
     MagiskAndroidSurface,
@@ -382,12 +378,6 @@ impl MagiskHost {
             )
             .with_framework(content.clone()),
         )
-        .with_command(NativeCommandExecutionSurface::new(
-            artifacts.clone(),
-            capabilities.clone(),
-            COMMAND_IDENTITIES,
-            MagiskCommandProcessPort::new(command_root.clone()),
-        ))
         .with_network(NativeNetworkExecutionSurface::new(
             artifacts.clone(),
             capabilities.clone(),

@@ -1,11 +1,10 @@
 use crate::DomainError;
 use contract::{
     AndroidClipboardInput, AndroidLaunchInput, Automation, AutomationAction, AutomationAndroidCall,
-    AutomationCommandCall, AutomationCompatibleCall, AutomationElementInput,
-    AutomationFilesystemCall, AutomationId, AutomationNetworkCall, AutomationTrigger,
-    AutomationVisualCall, CommandRunInput, ConditionOperator, ElementOperation, ExecutionId,
-    FileTarget, FilesystemDownloadInput, FilesystemManageInput, NetworkDiagnoseInput, PointTarget,
-    RunAs, ScalarValue, TaskId, VisualInteractInput,
+    AutomationCompatibleCall, AutomationElementInput, AutomationFilesystemCall, AutomationId,
+    AutomationNetworkCall, AutomationTrigger, AutomationVisualCall, ConditionOperator,
+    ElementOperation, ExecutionId, FileTarget, FilesystemDownloadInput, FilesystemManageInput,
+    NetworkDiagnoseInput, PointTarget, ScalarValue, TaskId, VisualInteractInput,
 };
 use std::collections::BTreeMap;
 
@@ -87,36 +86,6 @@ fn validate_download(input: &FilesystemDownloadInput) -> Result<(), DomainError>
     target(&input.destination)?;
     if !(1000..=3_600_000).contains(&input.timeout_ms) {
         return Err(DomainError::invalid("download timeout is out of bounds"));
-    }
-    Ok(())
-}
-
-fn validate_command(input: &CommandRunInput) -> Result<(), DomainError> {
-    bounded(&input.command, 1, 32_768, "command is out of bounds")?;
-    if let Some(cwd) = &input.cwd {
-        bounded(cwd, 1, 4096, "cwd is out of bounds")?;
-        if !cwd.starts_with('/') {
-            return Err(DomainError::invalid("cwd must be absolute"));
-        }
-    }
-    if input
-        .stdin
-        .as_ref()
-        .is_some_and(|value| value.len() > 65_536)
-    {
-        return Err(DomainError::invalid("stdin is out of bounds"));
-    }
-    let maximum_timeout = match input.run_as {
-        RunAs::App | RunAs::Shell => 150_000,
-        RunAs::Root => 3_600_000,
-    };
-    if !(1000..=maximum_timeout).contains(&input.timeout_ms) {
-        return Err(DomainError::invalid("command timeout is out of bounds"));
-    }
-    if !(1024..=1_048_576).contains(&input.max_output_bytes) {
-        return Err(DomainError::invalid(
-            "command output limit is out of bounds",
-        ));
     }
     Ok(())
 }
@@ -248,9 +217,6 @@ fn validate_call(call: &AutomationCompatibleCall) -> Result<(), DomainError> {
         AutomationCompatibleCall::Filesystem {
             call: AutomationFilesystemCall::Download(input),
         } => validate_download(input),
-        AutomationCompatibleCall::Command {
-            call: AutomationCommandCall::Run(input),
-        } => validate_command(input),
         AutomationCompatibleCall::Network {
             call: AutomationNetworkCall::Diagnose(input),
         } => validate_network(input),

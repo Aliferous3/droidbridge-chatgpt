@@ -59,7 +59,6 @@ fn capability() -> CapabilitySnapshot {
             magisk_clipboard: available(),
             magisk_notifications: available(),
             magisk_wake_alarm: available(),
-            execution_app_guard: available(),
             execution_shell_guard: available(),
             execution_root_guard: available(),
         },

@@ -49,12 +49,6 @@
       "tool": "filesystem"
     },
     {
-      "action": "run",
-      "automation_compatible": true,
-      "capability_requirement": "dynamic",
-      "tool": "command"
-    },
-    {
       "action": "inspect",
       "automation_compatible": false,
       "capability_requirement": "network.inspect",
@@ -189,19 +183,14 @@
   ],
   "conditional_rules": [
     "filesystem.inspect.max_depth is 1 unless recursive=true",
-    "command.run.timeout_ms maximum is 150000 for app|shell and 3600000 for root",
     "filesystem.read has exactly one of target|data_ref",
     "filesystem.read result has exactly one of data|data_ref",
-    "command.run each stream has exactly one of inline|ref",
     "task snapshot terminal result and error are mutually exclusive",
     "visual observe image and node presence groups follow their requested availability",
     "network inspect availability, data, and truncated keys match the requested families"
   ],
   "effective_capabilities": [
     "filesystem.privileged_path",
-    "command.app",
-    "command.shell",
-    "command.root",
     "network.inspect",
     "network.internet",
     "network.local",
@@ -255,7 +244,6 @@
     "magisk.clipboard",
     "magisk.notifications",
     "magisk.wake_alarm",
-    "execution.app_guard",
     "execution.shell_guard",
     "execution.root_guard"
   ],
@@ -293,10 +281,6 @@
     ],
     "automation.set_enabled": [
       "result.automation.set_enabled"
-    ],
-    "command.run": [
-      "result.command.run",
-      "result.command.run.accepted"
     ],
     "context.catalog": [
       "result.context.catalog"
@@ -465,22 +449,6 @@
     {
       "max": 128,
       "path": "context.status.components.*.version"
-    },
-    {
-      "forbid_nul": true,
-      "max": 32768,
-      "min": 1,
-      "path": "command.run.command"
-    },
-    {
-      "forbid_nul": true,
-      "max": 4096,
-      "min": 1,
-      "path": "command.run.cwd"
-    },
-    {
-      "max": 65536,
-      "path": "command.run.stdin"
     },
     {
       "charset": "ascii",

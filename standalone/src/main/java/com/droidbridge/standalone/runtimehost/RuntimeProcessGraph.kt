@@ -16,7 +16,6 @@ import com.droidbridge.standalone.execution.android.AndroidContentResolverAccess
 import com.droidbridge.standalone.execution.android.AndroidNetworkSnapshotAdapter
 import com.droidbridge.standalone.execution.android.AndroidNetworkDefaultCallbackAccess
 import com.droidbridge.standalone.execution.android.AndroidPrimitive
-import com.droidbridge.standalone.execution.android.AppProcessExecutor
 import com.droidbridge.standalone.execution.android.CapabilityRegistration
 import com.droidbridge.standalone.execution.android.AndroidExactAlarmAccess
 import com.droidbridge.standalone.execution.android.ContentResolverFilesystemAdapter
@@ -98,7 +97,6 @@ internal class RuntimeProcessGraph(application: Application) {
                 AndroidContentResolverAccess(application.contentResolver),
                 hostController::validatesFence,
             ),
-            AppProcessExecutor(hostController::validatesFence),
             AndroidNetworkSnapshotAdapter(
                 AndroidConnectivityAccess(application.getSystemService(ConnectivityManager::class.java)),
                 hostController::validatesFence,
@@ -174,8 +172,6 @@ internal class RuntimeProcessGraph(application: Application) {
             AndroidPrimitive.ClipboardRead,
             AndroidPrimitive.ClipboardWrite,
             AndroidPrimitive.ClipboardClear,
-            AndroidPrimitive.AppProcessStart,
-            AndroidPrimitive.AppProcessCancel,
             AndroidPrimitive.ShizukuProcessStart,
             AndroidPrimitive.ShizukuProcessCancel,
         )
@@ -189,7 +185,6 @@ internal class RuntimeProcessGraph(application: Application) {
  */
 private class RoutedAndroidExecution(
     private val framework: AndroidExecutionBridge,
-    private val app: AndroidExecutionBridge,
     private val network: AndroidExecutionBridge,
     private val networkDefault: AndroidExecutionBridge,
     private val exactAlarm: AndroidExecutionBridge,
@@ -230,9 +225,6 @@ private class RoutedAndroidExecution(
             AndroidPrimitive.ClipboardWrite,
             AndroidPrimitive.ClipboardClear,
             -> motherTool.execute(request)
-            AndroidPrimitive.AppProcessStart,
-            AndroidPrimitive.AppProcessCancel,
-            -> app.execute(request)
             AndroidPrimitive.ShizukuProcessStart,
             AndroidPrimitive.ShizukuProcessCancel,
             -> (shizuku() ?: throw AndroidExecutionException(CAPABILITY_UNAVAILABLE))

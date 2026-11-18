@@ -54,7 +54,6 @@ const fn namespace_token(tool: MotherTool) -> &'static str {
     match tool {
         MotherTool::Context => "context",
         MotherTool::Filesystem => "filesystem",
-        MotherTool::Command => "command",
         MotherTool::Network => "network",
         MotherTool::Visual => "visual",
         MotherTool::Android => "android",

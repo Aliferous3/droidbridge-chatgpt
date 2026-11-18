@@ -2,12 +2,11 @@
 //! reporting `ready` while every request fails (issue #2).
 
 use contract::{
-    Availability, CapabilityState, ErrorCode, GrantFacts, RunAs, RuntimeHost, RuntimeReadiness,
-    UuidV4,
+    Availability, CapabilityState, ErrorCode, GrantFacts, RuntimeHost, RuntimeReadiness, UuidV4,
 };
 use domain::{
-    AdmissionFence, CapabilityContext, DomainError, ExecutorRequest, ProviderGenerations,
-    ResolverFacts,
+    AdmissionFence, CapabilityContext, DomainError, ExecutorRequest, NetworkRoute,
+    ProviderGenerations, ResolverFacts,
 };
 use runtime::{
     CapabilityPort, CapabilitySnapshot, ExecutionPayload, PersistencePort, RecoveryProof,
@@ -44,7 +43,6 @@ fn ready() -> CapabilitySnapshot {
             magisk_clipboard: available(),
             magisk_notifications: available(),
             magisk_wake_alarm: available(),
-            execution_app_guard: available(),
             execution_shell_guard: available(),
             execution_root_guard: available(),
         },
@@ -119,9 +117,9 @@ async fn i3_an_unwritable_store_withdraws_readiness_and_reports_the_fault() {
                 request_id: uuid(10),
                 payload_sha256: "10".repeat(32),
                 execution_id: uuid(11),
-                operation: "command.run".to_owned(),
-                route: ExecutorRequest::Command(RunAs::App),
-                payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+                operation: "network.diagnose".to_owned(),
+                route: ExecutorRequest::Network(NetworkRoute::InspectOrDiagnose),
+                payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
                 settlement_bound_bytes: runtime::RESERVE_FLOOR_BYTES,
                 now_ms: 1_788_825_600_000,
             },

@@ -10,10 +10,9 @@ use crate::{
 };
 use contract::{
     AutomationCompatibleCall, AutomationElementInput, AutomationExecutionSummary, AutomationId,
-    AutomationVisualCall, CommandFailureCode, CommandResult, CommandTerminalState, ElementMatch,
-    ElementOperation, ErrorCode, ExecutionId, PointTarget, PublicError, PublicResponse,
-    ScalarValue, TaskAccepted, TaskId, TaskSnapshot, TaskState, VisualInteractInput, VisualNode,
-    VisualObserveResult,
+    AutomationVisualCall, ElementMatch, ElementOperation, ErrorCode, ExecutionId, PointTarget,
+    PublicError, PublicResponse, ScalarValue, TaskAccepted, TaskId, TaskSnapshot, TaskState,
+    VisualInteractInput, VisualNode, VisualObserveResult,
 };
 use domain::{AUTOMATION_BUDGET_MS, DomainError};
 use std::{
@@ -504,17 +503,10 @@ where
                 return self.element(input).await;
             }
             let result = self.submit(public_payload(call)?).await?;
-            match serde_json::from_value::<TaskAccepted>(result.clone()) {
-                Ok(accepted) => {
-                    let snapshot = self.await_child_task(&accepted.task_id).await?;
-                    let result = snapshot
-                        .result
-                        .and_then(|result| serde_json::to_value(result).ok())
-                        .unwrap_or(serde_json::Value::Null);
-                    Ok(command_outcome(&result))
-                }
-                Err(_) => Ok(command_outcome(&result)),
+            if let Ok(accepted) = serde_json::from_value::<TaskAccepted>(result) {
+                self.await_child_task(&accepted.task_id).await?;
             }
+            Ok(CallOutcome::default())
         })
     }
 
@@ -577,26 +569,10 @@ fn public_payload(call: &AutomationCompatibleCall) -> Result<serde_json::Value, 
 fn request_bytes(payload: serde_json::Value) -> Result<Vec<u8>, DomainError> {
     serde_json::to_vec(&serde_json::json!({
         "protocol_version": 1,
-        "request_id": crate::command::new_uuid()?,
+        "request_id": crate::execution::new_uuid()?,
         "payload": payload,
     }))
     .map_err(|_| DomainError::new(ErrorCode::InternalError, "Automation Call encoding failed"))
-}
-
-/// A command reports its exit; a command that failed is a failed step.
-fn command_outcome(result: &serde_json::Value) -> CallOutcome {
-    let Ok(command) = serde_json::from_value::<CommandResult>(result.clone()) else {
-        return CallOutcome::default();
-    };
-    CallOutcome {
-        failure: (command.state == CommandTerminalState::Failed).then_some(
-            match command.failure_code {
-                Some(CommandFailureCode::Timeout) => ErrorCode::Timeout,
-                _ => ErrorCode::ExecutionFailed,
-            },
-        ),
-        exit_code: command.exit_code,
-    }
 }
 
 fn element_matches(node: &VisualNode, by: ElementMatch, value: &str) -> bool {

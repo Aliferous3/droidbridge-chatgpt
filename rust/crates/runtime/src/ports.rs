@@ -1,6 +1,5 @@
 use contract::{
-    AutomationCompatibleCall, CommandCall, FilesystemCall, GrantFacts, NetworkCall,
-    TaskTerminalResult, UuidV4,
+    AutomationCompatibleCall, FilesystemCall, GrantFacts, NetworkCall, TaskTerminalResult, UuidV4,
 };
 use domain::{AdmissionFence, CapabilityContext, DomainError, ResolverFacts};
 use std::{
@@ -110,7 +109,6 @@ pub enum ExecutionPayload {
     OpaqueOperation(String),
     AutomationCall(AutomationCompatibleCall),
     FilesystemCall(FilesystemCall),
-    CommandCall(CommandCall),
     NetworkCall(NetworkCall),
     VisualCall(crate::VisualExecutionEnvelope),
     AndroidCall(crate::AndroidExecutionEnvelope),

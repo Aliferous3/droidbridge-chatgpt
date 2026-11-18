@@ -136,8 +136,6 @@ internal class RuntimeHostController(
         registerPlatformFacts()
         frameworkReadySink.get()?.invoke(generation)
         recoverMaintenance()
-        val guard = File(application.applicationInfo.nativeLibraryDir, "libdroidbridge_exec_guard.so")
-        NativeRuntime.nativeProbeAppGuard(guard.absolutePath)
         guardScopeSink.get()?.invoke()
         return true
     }

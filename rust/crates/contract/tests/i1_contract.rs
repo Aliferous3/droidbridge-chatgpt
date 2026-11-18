@@ -84,13 +84,13 @@ fn i1_g02_catalog_fields_defaults_bounds_and_internal_schemas_are_serializable()
     let metadata = contract_metadata();
     assert_eq!(metadata["schema_version"], 1);
     assert_eq!(metadata["error_codes"].as_array().unwrap().len(), 23);
-    assert_eq!(metadata["grants"].as_array().unwrap().len(), 17);
+    assert_eq!(metadata["grants"].as_array().unwrap().len(), 16);
     assert_eq!(
         metadata["effective_capabilities"].as_array().unwrap().len(),
-        16
+        13
     );
     assert_eq!(serde_json::to_value(TaskState::Created).unwrap(), "created");
-    assert_eq!(metadata["actions"].as_array().unwrap().len(), 31);
+    assert_eq!(metadata["actions"].as_array().unwrap().len(), 30);
     assert_eq!(
         metadata["result_schema_bindings"]
             .as_object()
@@ -166,7 +166,7 @@ fn i1_g04_dispatch_and_nested_domain_unions_are_unambiguous() {
             .iter()
             .filter(|spec| spec.automation_compatible)
             .count(),
-        7
+        6
     );
 
     let coordinate: PublicRequest = serde_json::from_value(request(json!({

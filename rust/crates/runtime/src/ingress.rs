@@ -74,22 +74,6 @@ where
             "Runtime host transition is pending",
         )
         .into()),
-        contract::PublicPayload::Command { call } if business_admission_open => {
-            crate::handle_command_public(
-                core,
-                request_id.clone(),
-                payload_sha256,
-                call,
-                ended_at,
-                now_ms,
-            )
-            .await
-        }
-        contract::PublicPayload::Command { .. } => Err(DomainError::new(
-            ErrorCode::HostTransitionPending,
-            "Runtime host transition is pending",
-        )
-        .into()),
         contract::PublicPayload::Network { call } if business_admission_open => {
             crate::handle_network_public(
                 core,

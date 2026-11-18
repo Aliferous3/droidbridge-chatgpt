@@ -101,8 +101,7 @@ fn snapshot(facts: Facts) -> CapabilitySnapshot {
             magisk_clipboard: availability(facts.magisk_clipboard),
             magisk_notifications: availability(facts.magisk_notifications),
             magisk_wake_alarm: availability(root),
-            execution_app_guard: availability(available),
-            execution_shell_guard: availability(facts.shizuku),
+            execution_shell_guard: availability(root),
             execution_root_guard: availability(root),
         },
         context: CapabilityContext {
@@ -379,7 +378,6 @@ impl AndroidPrimitivePort for FixturePort {
 
 type TestSurface = CompositeExecutionSurface<
     NoFilesystem,
-    UnavailableExecutionDelegate,
     UnavailableExecutionDelegate,
     UnavailableExecutionDelegate,
     NativeAndroidExecutionSurface<FakeCapabilities, FixturePort>,

@@ -207,36 +207,6 @@
                   "properties": {
                     "tool": {
                       "type": "string",
-                      "const": "command"
-                    }
-                  },
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "action": {
-                          "type": "string",
-                          "const": "run"
-                        },
-                        "args": {
-                          "$ref": "#/$defs/CommandRunInput"
-                        }
-                      },
-                      "required": [
-                        "action",
-                        "args"
-                      ]
-                    }
-                  ],
-                  "required": [
-                    "tool"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "tool": {
-                      "type": "string",
                       "const": "network"
                     }
                   },
@@ -651,59 +621,6 @@
             }
           ]
         },
-        "CommandRunInput": {
-          "type": "object",
-          "properties": {
-            "as_task": {
-              "description": "Return a task_id immediately. Poll task_control.get for the terminal state, then inspect result.state and result.exit_code.",
-              "type": "boolean",
-              "default": false
-            },
-            "command": {
-              "description": "The shell command, at most 32768 bytes of UTF-8. Every process it starts stays in its\nprocess group (setsid and setpgid fail with EPERM) and is stopped when the command exits,\ntimes out or is cancelled, background (`&`, `nohup`) ones included: nothing it starts\noutlives it.",
-              "type": "string"
-            },
-            "cwd": {
-              "description": "An absolute working directory, at most 4096 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "max_output_bytes": {
-              "description": "Maximum bytes collected for command output. Inspect stdout_truncated and stderr_truncated, and use returned references when present.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 65536,
-              "maximum": 1048576,
-              "minimum": 1024
-            },
-            "run_as": {
-              "description": "Required execution identity. Choose app, shell or root according to the current capabilities; the result reports requested_run_as and actual_run_as.",
-              "$ref": "#/$defs/RunAs"
-            },
-            "stdin": {
-              "description": "Text written to the command's standard input, at most 65536 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "timeout_ms": {
-              "description": "The deadline in milliseconds, 30000 unless set: at most 150000 for app and shell and\n3600000 for root. At the deadline the command and every process it started are stopped.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 30000,
-              "maximum": 3600000,
-              "minimum": 1000
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "command",
-            "run_as"
-          ]
-        },
         "ConditionOperator": {
           "type": "string",
           "enum": [
@@ -724,7 +641,7 @@
               ]
             },
             {
-              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a command.",
+              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a guarded process.",
               "type": "string",
               "const": "result"
             }
@@ -1029,14 +946,6 @@
                 "destination_ip"
               ]
             }
-          ]
-        },
-        "RunAs": {
-          "type": "string",
-          "enum": [
-            "app",
-            "shell",
-            "root"
           ]
         },
         "ScalarValue": {
@@ -1985,36 +1894,6 @@
                   "properties": {
                     "tool": {
                       "type": "string",
-                      "const": "command"
-                    }
-                  },
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "action": {
-                          "type": "string",
-                          "const": "run"
-                        },
-                        "args": {
-                          "$ref": "#/$defs/CommandRunInput"
-                        }
-                      },
-                      "required": [
-                        "action",
-                        "args"
-                      ]
-                    }
-                  ],
-                  "required": [
-                    "tool"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "tool": {
-                      "type": "string",
                       "const": "network"
                     }
                   },
@@ -2584,59 +2463,6 @@
             "action"
           ]
         },
-        "CommandRunInput": {
-          "type": "object",
-          "properties": {
-            "as_task": {
-              "description": "Return a task_id immediately. Poll task_control.get for the terminal state, then inspect result.state and result.exit_code.",
-              "type": "boolean",
-              "default": false
-            },
-            "command": {
-              "description": "The shell command, at most 32768 bytes of UTF-8. Every process it starts stays in its\nprocess group (setsid and setpgid fail with EPERM) and is stopped when the command exits,\ntimes out or is cancelled, background (`&`, `nohup`) ones included: nothing it starts\noutlives it.",
-              "type": "string"
-            },
-            "cwd": {
-              "description": "An absolute working directory, at most 4096 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "max_output_bytes": {
-              "description": "Maximum bytes collected for command output. Inspect stdout_truncated and stderr_truncated, and use returned references when present.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 65536,
-              "maximum": 1048576,
-              "minimum": 1024
-            },
-            "run_as": {
-              "description": "Required execution identity. Choose app, shell or root according to the current capabilities; the result reports requested_run_as and actual_run_as.",
-              "$ref": "#/$defs/RunAs"
-            },
-            "stdin": {
-              "description": "Text written to the command's standard input, at most 65536 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "timeout_ms": {
-              "description": "The deadline in milliseconds, 30000 unless set: at most 150000 for app and shell and\n3600000 for root. At the deadline the command and every process it started are stopped.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 30000,
-              "maximum": 3600000,
-              "minimum": 1000
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "command",
-            "run_as"
-          ]
-        },
         "ConditionOperator": {
           "type": "string",
           "enum": [
@@ -2657,7 +2483,7 @@
               ]
             },
             {
-              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a command.",
+              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a guarded process.",
               "type": "string",
               "const": "result"
             }
@@ -3836,37 +3662,6 @@
               "properties": {
                 "tool": {
                   "type": "string",
-                  "const": "command"
-                }
-              },
-              "oneOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "action": {
-                      "type": "string",
-                      "const": "run"
-                    },
-                    "input": {
-                      "$ref": "#/$defs/CommandRunInput"
-                    }
-                  },
-                  "required": [
-                    "action",
-                    "input"
-                  ]
-                }
-              ],
-              "required": [
-                "tool"
-              ],
-              "unevaluatedProperties": false
-            },
-            {
-              "type": "object",
-              "properties": {
-                "tool": {
-                  "type": "string",
                   "const": "network"
                 }
               },
@@ -4337,14 +4132,6 @@
           "required": [
             "old",
             "new"
-          ]
-        },
-        "RunAs": {
-          "type": "string",
-          "enum": [
-            "app",
-            "shell",
-            "root"
           ]
         },
         "ScalarValue": {
@@ -5907,36 +5694,6 @@
                   "properties": {
                     "tool": {
                       "type": "string",
-                      "const": "command"
-                    }
-                  },
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "action": {
-                          "type": "string",
-                          "const": "run"
-                        },
-                        "args": {
-                          "$ref": "#/$defs/CommandRunInput"
-                        }
-                      },
-                      "required": [
-                        "action",
-                        "args"
-                      ]
-                    }
-                  ],
-                  "required": [
-                    "tool"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "tool": {
-                      "type": "string",
                       "const": "network"
                     }
                   },
@@ -6404,59 +6161,6 @@
             }
           ]
         },
-        "CommandRunInput": {
-          "type": "object",
-          "properties": {
-            "as_task": {
-              "description": "Return a task_id immediately. Poll task_control.get for the terminal state, then inspect result.state and result.exit_code.",
-              "type": "boolean",
-              "default": false
-            },
-            "command": {
-              "description": "The shell command, at most 32768 bytes of UTF-8. Every process it starts stays in its\nprocess group (setsid and setpgid fail with EPERM) and is stopped when the command exits,\ntimes out or is cancelled, background (`&`, `nohup`) ones included: nothing it starts\noutlives it.",
-              "type": "string"
-            },
-            "cwd": {
-              "description": "An absolute working directory, at most 4096 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "max_output_bytes": {
-              "description": "Maximum bytes collected for command output. Inspect stdout_truncated and stderr_truncated, and use returned references when present.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 65536,
-              "maximum": 1048576,
-              "minimum": 1024
-            },
-            "run_as": {
-              "description": "Required execution identity. Choose app, shell or root according to the current capabilities; the result reports requested_run_as and actual_run_as.",
-              "$ref": "#/$defs/RunAs"
-            },
-            "stdin": {
-              "description": "Text written to the command's standard input, at most 65536 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "timeout_ms": {
-              "description": "The deadline in milliseconds, 30000 unless set: at most 150000 for app and shell and\n3600000 for root. At the deadline the command and every process it started are stopped.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 30000,
-              "maximum": 3600000,
-              "minimum": 1000
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "command",
-            "run_as"
-          ]
-        },
         "ConditionOperator": {
           "type": "string",
           "enum": [
@@ -6477,7 +6181,7 @@
               ]
             },
             {
-              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a command.",
+              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a guarded process.",
               "type": "string",
               "const": "result"
             }
@@ -6782,14 +6486,6 @@
                 "destination_ip"
               ]
             }
-          ]
-        },
-        "RunAs": {
-          "type": "string",
-          "enum": [
-            "app",
-            "shell",
-            "root"
           ]
         },
         "ScalarValue": {
@@ -7491,36 +7187,6 @@
                   "properties": {
                     "tool": {
                       "type": "string",
-                      "const": "command"
-                    }
-                  },
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "action": {
-                          "type": "string",
-                          "const": "run"
-                        },
-                        "args": {
-                          "$ref": "#/$defs/CommandRunInput"
-                        }
-                      },
-                      "required": [
-                        "action",
-                        "args"
-                      ]
-                    }
-                  ],
-                  "required": [
-                    "tool"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "tool": {
-                      "type": "string",
                       "const": "network"
                     }
                   },
@@ -7935,59 +7601,6 @@
             }
           ]
         },
-        "CommandRunInput": {
-          "type": "object",
-          "properties": {
-            "as_task": {
-              "description": "Return a task_id immediately. Poll task_control.get for the terminal state, then inspect result.state and result.exit_code.",
-              "type": "boolean",
-              "default": false
-            },
-            "command": {
-              "description": "The shell command, at most 32768 bytes of UTF-8. Every process it starts stays in its\nprocess group (setsid and setpgid fail with EPERM) and is stopped when the command exits,\ntimes out or is cancelled, background (`&`, `nohup`) ones included: nothing it starts\noutlives it.",
-              "type": "string"
-            },
-            "cwd": {
-              "description": "An absolute working directory, at most 4096 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "max_output_bytes": {
-              "description": "Maximum bytes collected for command output. Inspect stdout_truncated and stderr_truncated, and use returned references when present.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 65536,
-              "maximum": 1048576,
-              "minimum": 1024
-            },
-            "run_as": {
-              "description": "Required execution identity. Choose app, shell or root according to the current capabilities; the result reports requested_run_as and actual_run_as.",
-              "$ref": "#/$defs/RunAs"
-            },
-            "stdin": {
-              "description": "Text written to the command's standard input, at most 65536 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "timeout_ms": {
-              "description": "The deadline in milliseconds, 30000 unless set: at most 150000 for app and shell and\n3600000 for root. At the deadline the command and every process it started are stopped.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 30000,
-              "maximum": 3600000,
-              "minimum": 1000
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "command",
-            "run_as"
-          ]
-        },
         "ConditionOperator": {
           "type": "string",
           "enum": [
@@ -8008,7 +7621,7 @@
               ]
             },
             {
-              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a command.",
+              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a guarded process.",
               "type": "string",
               "const": "result"
             }
@@ -8313,14 +7926,6 @@
                 "destination_ip"
               ]
             }
-          ]
-        },
-        "RunAs": {
-          "type": "string",
-          "enum": [
-            "app",
-            "shell",
-            "root"
           ]
         },
         "ScalarValue": {
@@ -8877,36 +8482,6 @@
                   "properties": {
                     "tool": {
                       "type": "string",
-                      "const": "command"
-                    }
-                  },
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "action": {
-                          "type": "string",
-                          "const": "run"
-                        },
-                        "args": {
-                          "$ref": "#/$defs/CommandRunInput"
-                        }
-                      },
-                      "required": [
-                        "action",
-                        "args"
-                      ]
-                    }
-                  ],
-                  "required": [
-                    "tool"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "tool": {
-                      "type": "string",
                       "const": "network"
                     }
                   },
@@ -9321,59 +8896,6 @@
             }
           ]
         },
-        "CommandRunInput": {
-          "type": "object",
-          "properties": {
-            "as_task": {
-              "description": "Return a task_id immediately. Poll task_control.get for the terminal state, then inspect result.state and result.exit_code.",
-              "type": "boolean",
-              "default": false
-            },
-            "command": {
-              "description": "The shell command, at most 32768 bytes of UTF-8. Every process it starts stays in its\nprocess group (setsid and setpgid fail with EPERM) and is stopped when the command exits,\ntimes out or is cancelled, background (`&`, `nohup`) ones included: nothing it starts\noutlives it.",
-              "type": "string"
-            },
-            "cwd": {
-              "description": "An absolute working directory, at most 4096 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "max_output_bytes": {
-              "description": "Maximum bytes collected for command output. Inspect stdout_truncated and stderr_truncated, and use returned references when present.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 65536,
-              "maximum": 1048576,
-              "minimum": 1024
-            },
-            "run_as": {
-              "description": "Required execution identity. Choose app, shell or root according to the current capabilities; the result reports requested_run_as and actual_run_as.",
-              "$ref": "#/$defs/RunAs"
-            },
-            "stdin": {
-              "description": "Text written to the command's standard input, at most 65536 bytes of UTF-8.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "timeout_ms": {
-              "description": "The deadline in milliseconds, 30000 unless set: at most 150000 for app and shell and\n3600000 for root. At the deadline the command and every process it started are stopped.",
-              "type": "integer",
-              "format": "uint64",
-              "default": 30000,
-              "maximum": 3600000,
-              "minimum": 1000
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "command",
-            "run_as"
-          ]
-        },
         "ConditionOperator": {
           "type": "string",
           "enum": [
@@ -9394,7 +8916,7 @@
               ]
             },
             {
-              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a command.",
+              "description": "The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it\nfailed, and `exit_code` when it ran a guarded process.",
               "type": "string",
               "const": "result"
             }
@@ -9699,14 +9221,6 @@
                 "destination_ip"
               ]
             }
-          ]
-        },
-        "RunAs": {
-          "type": "string",
-          "enum": [
-            "app",
-            "shell",
-            "root"
           ]
         },
         "ScalarValue": {
@@ -10057,140 +9571,6 @@
         }
       }
     },
-    "result.command.run": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "title": "CommandResult",
-      "type": "object",
-      "properties": {
-        "actual_run_as": {
-          "$ref": "#/$defs/RunAs"
-        },
-        "duration_ms": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
-        },
-        "execution_class": {
-          "$ref": "#/$defs/ExecutionClass"
-        },
-        "exit_code": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "int32"
-        },
-        "failure_code": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CommandFailureCode"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "requested_run_as": {
-          "$ref": "#/$defs/RunAs"
-        },
-        "state": {
-          "$ref": "#/$defs/CommandTerminalState"
-        },
-        "stderr": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "stderr_ref": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "stderr_truncated": {
-          "type": "boolean"
-        },
-        "stdout": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "stdout_ref": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "stdout_truncated": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "state",
-        "requested_run_as",
-        "actual_run_as",
-        "execution_class",
-        "duration_ms",
-        "stdout_truncated",
-        "stderr_truncated"
-      ],
-      "$defs": {
-        "CommandFailureCode": {
-          "type": "string",
-          "enum": [
-            "EXECUTION_FAILED",
-            "TIMEOUT"
-          ]
-        },
-        "CommandTerminalState": {
-          "type": "string",
-          "enum": [
-            "completed",
-            "failed"
-          ]
-        },
-        "ExecutionClass": {
-          "type": "string",
-          "enum": [
-            "app",
-            "android_framework",
-            "shizuku",
-            "magisk"
-          ]
-        },
-        "RunAs": {
-          "type": "string",
-          "enum": [
-            "app",
-            "shell",
-            "root"
-          ]
-        }
-      }
-    },
-    "result.command.run.accepted": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "title": "TaskAccepted",
-      "type": "object",
-      "properties": {
-        "task_id": {
-          "$ref": "#/$defs/UuidV4"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "task_id"
-      ],
-      "$defs": {
-        "UuidV4": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-        }
-      }
-    },
     "result.context.catalog": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "ContextCatalogResult",
@@ -10259,7 +9639,6 @@
           "enum": [
             "context",
             "filesystem",
-            "command",
             "network",
             "visual",
             "android",
@@ -10353,15 +9732,6 @@
             "automation.persistent_time": {
               "$ref": "#/$defs/Availability"
             },
-            "command.app": {
-              "$ref": "#/$defs/Availability"
-            },
-            "command.root": {
-              "$ref": "#/$defs/Availability"
-            },
-            "command.shell": {
-              "$ref": "#/$defs/Availability"
-            },
             "filesystem.privileged_path": {
               "$ref": "#/$defs/Availability"
             },
@@ -10399,9 +9769,6 @@
           "additionalProperties": false,
           "required": [
             "filesystem.privileged_path",
-            "command.app",
-            "command.shell",
-            "command.root",
             "network.inspect",
             "network.internet",
             "network.local",
@@ -10621,15 +9988,6 @@
             "automation.persistent_time": {
               "$ref": "#/$defs/Availability"
             },
-            "command.app": {
-              "$ref": "#/$defs/Availability"
-            },
-            "command.root": {
-              "$ref": "#/$defs/Availability"
-            },
-            "command.shell": {
-              "$ref": "#/$defs/Availability"
-            },
             "filesystem.privileged_path": {
               "$ref": "#/$defs/Availability"
             },
@@ -10667,9 +10025,6 @@
           "additionalProperties": false,
           "required": [
             "filesystem.privileged_path",
-            "command.app",
-            "command.shell",
-            "command.root",
             "network.inspect",
             "network.internet",
             "network.local",
@@ -10697,9 +10052,6 @@
               "$ref": "#/$defs/Availability"
             },
             "automation.exact_alarm": {
-              "$ref": "#/$defs/Availability"
-            },
-            "execution.app_guard": {
               "$ref": "#/$defs/Availability"
             },
             "execution.root_guard": {
@@ -10755,7 +10107,6 @@
             "magisk.clipboard",
             "magisk.notifications",
             "magisk.wake_alarm",
-            "execution.app_guard",
             "execution.shell_guard",
             "execution.root_guard"
           ]
@@ -12578,7 +11929,6 @@
           "enum": [
             "context",
             "filesystem",
-            "command",
             "network",
             "visual",
             "android",
@@ -12802,99 +12152,6 @@
             "capture_result"
           ]
         },
-        "CommandFailureCode": {
-          "type": "string",
-          "enum": [
-            "EXECUTION_FAILED",
-            "TIMEOUT"
-          ]
-        },
-        "CommandResult": {
-          "type": "object",
-          "properties": {
-            "actual_run_as": {
-              "$ref": "#/$defs/RunAs"
-            },
-            "duration_ms": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            },
-            "execution_class": {
-              "$ref": "#/$defs/ExecutionClass"
-            },
-            "exit_code": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int32"
-            },
-            "failure_code": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/CommandFailureCode"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "requested_run_as": {
-              "$ref": "#/$defs/RunAs"
-            },
-            "state": {
-              "$ref": "#/$defs/CommandTerminalState"
-            },
-            "stderr": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "stderr_ref": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "stderr_truncated": {
-              "type": "boolean"
-            },
-            "stdout": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "stdout_ref": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "stdout_truncated": {
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "state",
-            "requested_run_as",
-            "actual_run_as",
-            "execution_class",
-            "duration_ms",
-            "stdout_truncated",
-            "stderr_truncated"
-          ]
-        },
-        "CommandTerminalState": {
-          "type": "string",
-          "enum": [
-            "completed",
-            "failed"
-          ]
-        },
         "ErrorCode": {
           "type": "string",
           "enum": [
@@ -13092,7 +12349,6 @@
           "enum": [
             "context",
             "filesystem",
-            "command",
             "network",
             "visual",
             "android",
@@ -13143,14 +12399,6 @@
             "retryable"
           ]
         },
-        "RunAs": {
-          "type": "string",
-          "enum": [
-            "app",
-            "shell",
-            "root"
-          ]
-        },
         "TaskState": {
           "type": "string",
           "enum": [
@@ -13170,9 +12418,6 @@
             },
             {
               "$ref": "#/$defs/FilesystemArchiveTaskResult"
-            },
-            {
-              "$ref": "#/$defs/CommandResult"
             },
             {
               "$ref": "#/$defs/CaptureResult"

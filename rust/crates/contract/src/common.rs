@@ -10,7 +10,8 @@ macro_rules! string_enum {
 }
 pub(crate) use string_enum;
 
-string_enum!(MotherTool { Context=>"context", Filesystem=>"filesystem", Command=>"command", Network=>"network", Visual=>"visual", Android=>"android", Automation=>"automation", TaskControl=>"task_control" });
+string_enum!(MotherTool { Context=>"context", Filesystem=>"filesystem", Network=>"network", Visual=>"visual", Android=>"android", Automation=>"automation", TaskControl=>"task_control" });
+string_enum!(RunAs{App=>"app",Shell=>"shell",Root=>"root"});
 string_enum!(CapabilityState { Available=>"available", Unavailable=>"unavailable", Unknown=>"unknown" });
 string_enum!(RuntimeReadiness { Initializing=>"initializing", Ready=>"ready", Unavailable=>"unavailable" });
 string_enum!(RuntimeHost { ApkRuntime=>"apk_runtime", MagiskBackend=>"magisk_backend" });
@@ -67,16 +68,12 @@ pub const GRANT_KEYS: &[&str] = &[
     "magisk.clipboard",
     "magisk.notifications",
     "magisk.wake_alarm",
-    "execution.app_guard",
     "execution.shell_guard",
     "execution.root_guard",
 ];
 
 pub const CAPABILITY_KEYS: &[&str] = &[
     "filesystem.privileged_path",
-    "command.app",
-    "command.shell",
-    "command.root",
     "network.inspect",
     "network.internet",
     "network.local",
@@ -122,8 +119,6 @@ pub struct GrantFacts {
     pub magisk_notifications: Availability,
     #[serde(rename = "magisk.wake_alarm")]
     pub magisk_wake_alarm: Availability,
-    #[serde(rename = "execution.app_guard")]
-    pub execution_app_guard: Availability,
     #[serde(rename = "execution.shell_guard")]
     pub execution_shell_guard: Availability,
     #[serde(rename = "execution.root_guard")]
@@ -135,12 +130,6 @@ pub struct GrantFacts {
 pub struct EffectiveCapabilities {
     #[serde(rename = "filesystem.privileged_path")]
     pub filesystem_privileged_path: Availability,
-    #[serde(rename = "command.app")]
-    pub command_app: Availability,
-    #[serde(rename = "command.shell")]
-    pub command_shell: Availability,
-    #[serde(rename = "command.root")]
-    pub command_root: Availability,
     #[serde(rename = "network.inspect")]
     pub network_inspect: Availability,
     #[serde(rename = "network.internet")]

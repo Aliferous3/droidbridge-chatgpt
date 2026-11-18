@@ -34,10 +34,6 @@
     },
     {
       "maximum_escaped_terminal_bytes": 262144,
-      "operation": "command.run"
-    },
-    {
-      "maximum_escaped_terminal_bytes": 262144,
       "operation": "network.inspect"
     },
     {

@@ -1,12 +1,13 @@
 use contract::{
-    Automation, AutomationAction, AutomationCommandCall, AutomationCompatibleCall,
-    AutomationTaskResult, AutomationTrigger, Availability, CapabilityState, CommandRunInput,
-    ErrorCode, FileTarget, FileTargetType, FilesystemCall, FilesystemInspectInput, GrantFacts,
-    MotherTool, RunAs, RuntimeHost, RuntimeReadiness, ScalarValue, TaskState, TaskTerminalResult,
-    True, UuidV4,
+    Automation, AutomationAction, AutomationCompatibleCall, AutomationNetworkCall,
+    AutomationTaskResult, AutomationTrigger, Availability, CapabilityState, ErrorCode, FileTarget,
+    FileTargetType, FilesystemCall, FilesystemInspectInput, GrantFacts, MotherTool,
+    NetworkDiagnoseInput, RuntimeHost, RuntimeReadiness, ScalarValue, TaskState,
+    TaskTerminalResult, True, UuidV4,
 };
 use domain::{
-    AdmissionFence, CapabilityContext, ExecutorRequest, ProviderGenerations, ResolverFacts,
+    AdmissionFence, CapabilityContext, ExecutorRequest, NetworkRoute, ProviderGenerations,
+    ResolverFacts,
 };
 use runtime::{
     AdmittedExecution, ArtifactPort, AutomationEffects, AutomationInterpreter, CapabilityPort,
@@ -57,7 +58,6 @@ fn grants(state: CapabilityState) -> GrantFacts {
         magisk_clipboard: availability(state),
         magisk_notifications: availability(state),
         magisk_wake_alarm: availability(state),
-        execution_app_guard: availability(state),
         execution_shell_guard: availability(state),
         execution_root_guard: availability(state),
     }
@@ -137,10 +137,10 @@ fn admission(index: u64) -> TaskAdmission {
         payload_sha256: format!("{index:064x}"),
         task_id: uuid(0x3000_0000, index),
         execution_id: uuid(0x4000_0000, index),
-        tool: MotherTool::Command,
-        action: "run".to_owned(),
-        route: ExecutorRequest::Command(RunAs::App),
-        payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+        tool: MotherTool::Network,
+        action: "diagnose".to_owned(),
+        route: ExecutorRequest::Network(NetworkRoute::InspectOrDiagnose),
+        payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
         created_at: format!("2026-09-06T00:00:{:02}.000Z", index % 60),
         settlement_bound_bytes: 16_384,
         now_ms: index,
@@ -188,7 +188,7 @@ fn synchronous_admission(index: u64) -> SynchronousAdmission {
         payload_sha256: format!("{index:064x}"),
         execution_id: uuid(0x4100_0000, index),
         operation: "filesystem.manage".to_owned(),
-        route: ExecutorRequest::Command(RunAs::App),
+        route: ExecutorRequest::Network(NetworkRoute::InspectOrDiagnose),
         payload: ExecutionPayload::OpaqueOperation("filesystem.manage".to_owned()),
         settlement_bound_bytes: 16_384,
         now_ms: index,
@@ -293,7 +293,7 @@ fn automation() -> Automation {
 async fn i3_g01_fake_backed_core_exposes_stable_ports_and_interpreter() {
     let (core, _, artifacts, _, _, _) = make_core();
     assert_eq!(
-        core.capability_projection().unwrap().command_app.state,
+        core.capability_projection().unwrap().network_inspect.state,
         CapabilityState::Available
     );
     let metadata = artifacts.publish(b"bounded").unwrap();
@@ -301,16 +301,8 @@ async fn i3_g01_fake_backed_core_exposes_stable_ports_and_interpreter() {
     assert_eq!(metadata.sha256.len(), 64);
 
     let call = AutomationAction::Call {
-        call: AutomationCompatibleCall::Command {
-            call: AutomationCommandCall::Run(CommandRunInput {
-                command: "true".to_owned(),
-                run_as: RunAs::App,
-                cwd: None,
-                stdin: None,
-                timeout_ms: 1000,
-                max_output_bytes: 1024,
-                as_task: false,
-            }),
+        call: AutomationCompatibleCall::Network {
+            call: AutomationNetworkCall::Diagnose(NetworkDiagnoseInput::Connectivity {}),
         },
         on_failure: Default::default(),
     };
@@ -415,7 +407,7 @@ async fn i3_g02_fencing_dedup_cancellation_and_partial_failure_are_deterministic
     core.admit_task(request.clone()).await.unwrap();
     executions.push(Ok(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::Completed {
             result: TaskTerminalResult::Automation(AutomationTaskResult {
                 automation_id: uuid(0x6000_0000, 1),
@@ -473,7 +465,7 @@ async fn i3_g03_synchronous_mutation_is_persisted_once_and_terminal_result_is_re
     let expected = serde_json::json!({"moved": true});
     executions.push(Ok(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: expected.clone(),
             encoded_bytes: 128,
@@ -530,7 +522,7 @@ async fn i3_g03_a_result_over_the_retention_bound_answers_once_and_is_never_repl
     let large = serde_json::json!({"nodes": "n".repeat(10 * 1024)});
     executions.push(Ok(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: large.clone(),
             encoded_bytes: 128,
@@ -572,7 +564,7 @@ async fn i3_g03_synchronous_settlement_measures_the_result_instead_of_executor_a
     let admission = synchronous_admission(5);
     executions.push(Ok(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: serde_json::json!({"value": "x".repeat(20_000)}),
             encoded_bytes: 1,
@@ -600,7 +592,7 @@ async fn i3_g03_synchronous_settlement_measures_the_result_instead_of_executor_a
     let expected = serde_json::json!({"value": "small"});
     executions.push(Ok(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: expected.clone(),
             encoded_bytes: u64::MAX,
@@ -621,7 +613,7 @@ async fn i3_g02_concurrent_synchronous_duplicate_waits_for_the_original_executio
     let capabilities = FakeCapabilities::new(capability(2));
     let executions = GatedExecutions::new(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: serde_json::json!({"deleted": true}),
             encoded_bytes: 128,
@@ -862,7 +854,7 @@ async fn i3_g04_full_capacity_preserves_settlement_and_old_instance_results_are_
     let stale = admission(300);
     core.admit_task(stale.clone()).await.unwrap();
     executions.push(Ok(ExecutionCompletion {
-        fence: fence(2),
+        fence: fence(1),
         capability_generation: 1,
         outcome: ExecutionOutcome::Completed {
             result: TaskTerminalResult::Automation(AutomationTaskResult {
@@ -933,7 +925,7 @@ async fn i3_g05_readiness_blocks_admission_and_start_despite_provider_grants() {
         assert!(settled.started_at.is_none());
         let error = settled.error.unwrap();
         assert_eq!(error.code, ErrorCode::CapabilityUnavailable);
-        assert_eq!(error.operation, "command.run");
+        assert_eq!(error.operation, "network.diagnose");
         assert!(executions.started().is_empty());
         assert_eq!(persistence.snapshot().reserved_bytes, 0);
     }
@@ -946,7 +938,7 @@ async fn oversized_completion_fails_before_terminal_state_is_selected() {
     core.admit_task(request.clone()).await.unwrap();
     executions.push(Ok(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::Completed {
             result: TaskTerminalResult::Automation(AutomationTaskResult {
                 automation_id: uuid(0x6000_0000, 1),
@@ -1089,7 +1081,7 @@ async fn i3_g06_shared_ingress_preserves_protocol_operations_and_task_controls()
     assert_eq!(response["error"]["retryable"], false);
 
     let command = serde_json::json!({"protocol_version": 1, "request_id": request_id,
-        "payload": {"tool": "command", "action": "run", "input": {"command": "id", "run_as": "app"}}});
+        "payload": {"tool": "network", "action": "diagnose", "input": {"test": "connectivity"}}});
     let response: serde_json::Value = serde_json::from_slice(
         &runtime::submit_public(
             &core,
@@ -1121,7 +1113,7 @@ async fn i3_g07_composite_execution_dispatches_only_its_closed_typed_variant() {
             host: RuntimeHost::ApkRuntime,
             provider: ProviderToken::AppNative,
             execution_class: contract::ExecutionClass::App,
-            capability_generation: 2,
+            capability_generation: 1,
             fence: contract::Fence {
                 runtime_epoch: fence(2).runtime_epoch,
                 host_generation: 1,
@@ -1142,7 +1134,7 @@ async fn i3_g07_composite_execution_dispatches_only_its_closed_typed_variant() {
     };
     delegate.push(Ok(ExecutionCompletion {
         fence: fence(2),
-        capability_generation: 2,
+        capability_generation: 1,
         outcome: ExecutionOutcome::SynchronousCompleted {
             result: serde_json::json!({"delegated": true}),
             encoded_bytes: 18,
@@ -1158,7 +1150,7 @@ async fn i3_g07_composite_execution_dispatches_only_its_closed_typed_variant() {
 
     let unsupported = AdmittedExecution {
         execution_id: uuid(0x4000_0000, 81),
-        payload: ExecutionPayload::OpaqueOperation("command.run".to_owned()),
+        payload: ExecutionPayload::OpaqueOperation("network.diagnose".to_owned()),
         ..admitted
     };
     let failure = composite.claim_and_start(unsupported).await.unwrap_err();

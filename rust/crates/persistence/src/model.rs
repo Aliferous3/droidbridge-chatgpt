@@ -92,9 +92,6 @@ pub struct RequestRecord {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum StoredRoute {
-    Command {
-        run_as: contract::RunAs,
-    },
     Filesystem {
         route: StoredFilesystemRoute,
         target_type: contract::FileTargetType,
@@ -867,7 +864,6 @@ impl From<&TaskRecord> for StoredTask {
 impl From<ExecutorRequest> for StoredRoute {
     fn from(value: ExecutorRequest) -> Self {
         match value {
-            ExecutorRequest::Command(run_as) => Self::Command { run_as },
             ExecutorRequest::Filesystem {
                 route,
                 target_type,
@@ -895,7 +891,6 @@ impl From<ExecutorRequest> for StoredRoute {
 impl From<StoredRoute> for ExecutorRequest {
     fn from(value: StoredRoute) -> Self {
         match value {
-            StoredRoute::Command { run_as } => Self::Command(run_as),
             StoredRoute::Filesystem {
                 route,
                 target_type,

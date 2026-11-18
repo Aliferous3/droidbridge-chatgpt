@@ -2,11 +2,11 @@ use crate::app_guard_recovery::{AppCleanupVerification, reconcile_app_recovery};
 use crate::automation_wake::ApkAlarmWake;
 use crate::{
     AndroidFrameworkFilesystemDispatcher, AndroidFrameworkFilesystemPort,
-    AndroidShizukuFilesystemPort, ApkCommandProcessPort, ApkCore, ApkNetworkPort, ApkVisualPort,
-    GetifaddrsInterfaces, NativeHost, ProcFacts, StartResult, guard, host_slot, io_error, new_uuid,
-    read_boot_id, read_start_ticks,
+    AndroidShizukuFilesystemPort, ApkCore, ApkNetworkPort, ApkVisualPort, GetifaddrsInterfaces,
+    NativeHost, ProcFacts, StartResult, guard, host_slot, io_error, new_uuid, read_boot_id,
+    read_start_ticks,
 };
-use contract::{ErrorCode, RunAs, RuntimeHost, RuntimeReadiness, UuidV4};
+use contract::{ErrorCode, RuntimeHost, RuntimeReadiness, UuidV4};
 use domain::{AdmissionFence, DomainError};
 use persistence::{
     CanonicalState, FaultFileStore, FaultRecord, FaultRole, GuardProofDirectory,
@@ -16,8 +16,8 @@ use persistence::{
 use runtime::{
     AndroidNetworkDefaultEventSource, ApkCapabilityPort, ApkRuntimeVertical, AutomationScheduler,
     BoottimeClock, CapabilityPort, CompositeExecutionSurface, HostControlPort,
-    NativeCommandExecutionSurface, NativeFilesystemExecutionSurface, NativeNetworkExecutionSurface,
-    NativeVisualExecutionSurface, ProviderToken, RecoveryProof, RuntimeCore, VerticalEnvironment,
+    NativeFilesystemExecutionSurface, NativeNetworkExecutionSurface, NativeVisualExecutionSurface,
+    ProviderToken, RecoveryProof, RuntimeCore, VerticalEnvironment,
 };
 use std::{
     fs,
@@ -219,12 +219,6 @@ fn activate_app_host(
         ))
         .with_primitives(AndroidShizukuFilesystemPort),
     )
-    .with_command(NativeCommandExecutionSurface::new(
-        artifacts.clone(),
-        capabilities.clone(),
-        &[RunAs::App, RunAs::Shell],
-        ApkCommandProcessPort,
-    ))
     .with_network(NativeNetworkExecutionSurface::new(
         artifacts.clone(),
         capabilities.clone(),

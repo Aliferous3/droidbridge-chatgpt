@@ -57,8 +57,6 @@ fn schema_bundle() -> SchemaBundle {
     schemas.insert("result.automation.save", schema_for!(Automation));
     schemas.insert("result.automation.set_enabled", schema_for!(Automation));
     schemas.insert("result.automation.run", schema_for!(AutomationRunResult));
-    schemas.insert("result.command.run", schema_for!(CommandResult));
-    schemas.insert("result.command.run.accepted", schema_for!(TaskAccepted));
     schemas.insert("result.context.catalog", schema_for!(ContextCatalogResult));
     schemas.insert(
         "result.context.status.compact",
@@ -184,10 +182,6 @@ pub fn result_schema_bindings() -> Value {
                 "result.filesystem.archive.terminal",
             ],
         ),
-        (
-            "command.run",
-            vec!["result.command.run", "result.command.run.accepted"],
-        ),
         ("network.inspect", vec!["result.network.inspect"]),
         (
             "network.capture",
@@ -263,9 +257,6 @@ pub fn contract_metadata() -> Value {
             {"path":"context.status.device.device","max":256},
             {"path":"context.status.device.build_fingerprint","max":256},
             {"path":"context.status.components.*.version","max":128},
-            {"path":"command.run.command","min":1,"max":32768,"forbid_nul":true},
-            {"path":"command.run.cwd","min":1,"max":4096,"forbid_nul":true},
-            {"path":"command.run.stdin","max":65536},
             {"path":"network.inspect.sockets[].state","max":32,"charset":"ascii"},
             {"path":"visual.observe.foreground.*","max":512},
             {"path":"visual.observe.nodes[].textual_fields","max":4096},
@@ -305,10 +296,8 @@ pub fn contract_metadata() -> Value {
         },
         "conditional_rules": [
             "filesystem.inspect.max_depth is 1 unless recursive=true",
-            "command.run.timeout_ms maximum is 150000 for app|shell and 3600000 for root",
             "filesystem.read has exactly one of target|data_ref",
             "filesystem.read result has exactly one of data|data_ref",
-            "command.run each stream has exactly one of inline|ref",
             "task snapshot terminal result and error are mutually exclusive",
             "visual observe image and node presence groups follow their requested availability",
             "network inspect availability, data, and truncated keys match the requested families"

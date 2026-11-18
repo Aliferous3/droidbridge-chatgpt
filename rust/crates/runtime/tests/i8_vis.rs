@@ -51,8 +51,7 @@ fn capability(shizuku: CapabilityState, accessibility: CapabilityState) -> Capab
             magisk_clipboard: availability(CapabilityState::Unavailable),
             magisk_notifications: availability(CapabilityState::Unavailable),
             magisk_wake_alarm: availability(CapabilityState::Unavailable),
-            execution_app_guard: availability(available),
-            execution_shell_guard: availability(available),
+            execution_shell_guard: availability(CapabilityState::Unavailable),
             execution_root_guard: availability(CapabilityState::Unavailable),
         },
         context: CapabilityContext {
@@ -344,12 +343,8 @@ impl VisualPrimitivePort for FixtureVisualPort {
 
 type VisualSurface =
     NativeVisualExecutionSurface<FakeArtifacts, FakeCapabilities, FixtureVisualPort>;
-type TestSurface = CompositeExecutionSurface<
-    NoFilesystem,
-    runtime::UnavailableExecutionDelegate,
-    runtime::UnavailableExecutionDelegate,
-    VisualSurface,
->;
+type TestSurface =
+    CompositeExecutionSurface<NoFilesystem, runtime::UnavailableExecutionDelegate, VisualSurface>;
 type TestCore =
     RuntimeCore<FakePersistence, FakeArtifacts, TestSurface, FakeCapabilities, FakeHostControl>;
 

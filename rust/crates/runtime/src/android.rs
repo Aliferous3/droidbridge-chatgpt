@@ -7,7 +7,7 @@ use crate::{
     ExecutionPayload, ExecutionPort, ExecutorRecord, FilesystemPreflightPort, HostControlPort,
     LocalExecutionClaim, LocalExecutionClaims, PersistencePort, PortFuture, ProviderToken,
     RuntimeCore, SynchronousAdmission, UI_ENVELOPE_LIMIT_BYTES,
-    command::{execution_failure, execution_fence, new_uuid},
+    execution::{execution_failure, execution_fence, new_uuid},
 };
 use contract::{
     AndroidCall, AndroidClipboardInput, AndroidClipboardResult, AndroidIntentInput,

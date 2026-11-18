@@ -1268,7 +1268,7 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .len(),
-            8
+            7
         );
         assert!(payload.get("shard_token").is_none());
     }

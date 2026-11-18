@@ -12,7 +12,7 @@ use crate::{
     HostControlPort, LocalExecutionClaim, LocalExecutionClaims, PersistencePort, PortFuture,
     ProviderToken, RESERVE_FLOOR_BYTES, RuntimeCore, SynchronousAdmission, TaskAdmission,
     TaskAdmissionResult, UI_ENVELOPE_LIMIT_BYTES,
-    command::{execution_failure, execution_fence, new_uuid},
+    execution::{execution_failure, execution_fence, new_uuid},
 };
 use contract::{
     Availability, CapabilityState, CaptureId, CaptureReadResult, CaptureReadSource, CaptureResult,

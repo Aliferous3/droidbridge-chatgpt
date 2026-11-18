@@ -1,7 +1,5 @@
 use crate::DomainError;
-use contract::{
-    CapabilityState, ErrorCode, ExecutionClass, FileTargetType, RunAs, RuntimeHost, UuidV4,
-};
+use contract::{CapabilityState, ErrorCode, ExecutionClass, FileTargetType, RuntimeHost, UuidV4};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Provider {
@@ -163,7 +161,6 @@ pub enum AndroidRoute {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ExecutorRequest {
-    Command(RunAs),
     Filesystem {
         route: FilesystemRoute,
         target_type: FileTargetType,
@@ -210,28 +207,6 @@ pub fn resolve_executor(
     request: ExecutorRequest,
 ) -> Result<AdmittedExecutor, DomainError> {
     let candidates: Vec<(CapabilityState, Provider)> = match (host, request) {
-        (RuntimeHost::ApkRuntime, ExecutorRequest::Command(RunAs::App)) => {
-            vec![(facts.app_native, Provider::AppNative)]
-        }
-        (RuntimeHost::ApkRuntime, ExecutorRequest::Command(RunAs::Shell)) => {
-            vec![(facts.shizuku, Provider::Shizuku)]
-        }
-        (RuntimeHost::ApkRuntime, ExecutorRequest::Command(RunAs::Root)) => {
-            return Err(DomainError::new(
-                ErrorCode::RunAsUnavailable,
-                "root identity is unavailable on the APK surface",
-            ));
-        }
-        (RuntimeHost::MagiskBackend, ExecutorRequest::Command(RunAs::Root)) => {
-            vec![(facts.magisk_native, Provider::MagiskNative)]
-        }
-        // The root edition has no App process to run as, and no Shizuku.
-        (RuntimeHost::MagiskBackend, ExecutorRequest::Command(RunAs::App | RunAs::Shell)) => {
-            return Err(DomainError::new(
-                ErrorCode::RunAsUnavailable,
-                "only the root identity is available on the root host",
-            ));
-        }
         (
             RuntimeHost::MagiskBackend,
             ExecutorRequest::Filesystem {

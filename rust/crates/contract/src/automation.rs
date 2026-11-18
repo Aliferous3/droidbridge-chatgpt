@@ -1,7 +1,7 @@
 use crate::{
-    AndroidClipboardInput, AndroidLaunchInput, AutomationExecutionState, AutomationId,
-    CommandRunInput, ExecutionId, FilesystemDownloadInput, FilesystemManageInput,
-    NetworkDiagnoseInput, ScalarValue, TaskId, VisualInteractInput,
+    AndroidClipboardInput, AndroidLaunchInput, AutomationExecutionState, AutomationId, ExecutionId,
+    FilesystemDownloadInput, FilesystemManageInput, NetworkDiagnoseInput, ScalarValue, TaskId,
+    VisualInteractInput,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, de};
@@ -43,7 +43,7 @@ pub enum ConditionSource {
     #[serde(rename = "trigger")]
     Trigger,
     /// The outcome of the Call visited last in this execution: `succeeded`, `error_code` when it
-    /// failed, and `exit_code` when it ran a command.
+    /// failed, and `exit_code` when it ran a guarded process.
     #[serde(rename = "result")]
     Result,
 }
@@ -79,11 +79,6 @@ pub enum AutomationCompatibleCall {
         #[serde(flatten)]
         call: AutomationFilesystemCall,
     },
-    #[serde(rename = "command")]
-    Command {
-        #[serde(flatten)]
-        call: AutomationCommandCall,
-    },
     #[serde(rename = "network")]
     Network {
         #[serde(flatten)]
@@ -108,13 +103,6 @@ pub enum AutomationFilesystemCall {
     Manage(FilesystemManageInput),
     #[serde(rename = "download")]
     Download(FilesystemDownloadInput),
-}
-
-#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, tag = "action", content = "args")]
-pub enum AutomationCommandCall {
-    #[serde(rename = "run")]
-    Run(CommandRunInput),
 }
 
 #[derive(Clone, Debug, JsonSchema, PartialEq, Serialize, Deserialize)]

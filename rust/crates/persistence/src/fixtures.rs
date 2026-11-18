@@ -1,11 +1,11 @@
 use crate::{
     ArtifactKind, ArtifactRecord, CanonicalState, RequestRecord, StoredAutomation,
-    StoredAutomationExecution, StoredRoute, StoredTask,
+    StoredAutomationExecution, StoredFilesystemRoute, StoredPreflight, StoredRoute, StoredTask,
 };
 use contract::{
     Automation, AutomationAction, AutomationExecutionState, AutomationExecutionSummary,
-    AutomationTrigger, CommandResult, CommandTerminalState, ExecutionClass, Fence, MotherTool,
-    RunAs, ScalarValue, TaskState, TaskTerminalResult, UuidV4,
+    AutomationTrigger, ExecutionClass, Fence, FileTarget, FileTargetType, FilesystemDownloadResult,
+    MotherTool, ScalarValue, TaskState, TaskTerminalResult, UuidV4,
 };
 use runtime::{ExecutionPayload, ExecutorRecord, ProviderToken};
 use std::collections::BTreeMap;
@@ -118,8 +118,8 @@ fn realistic_baseline() -> CanonicalState {
         execution_id,
         state: TaskState::Completed,
         cancel_requested: false,
-        tool: MotherTool::Command,
-        action: "run".to_owned(),
+        tool: MotherTool::Filesystem,
+        action: "download".to_owned(),
         created_at: "2026-01-01T00:00:00.000Z".to_owned(),
         started_at: Some("2026-01-01T00:00:00.001Z".to_owned()),
         ended_at: Some("2026-01-01T00:00:00.002Z".to_owned()),
@@ -135,25 +135,25 @@ fn realistic_baseline() -> CanonicalState {
                 runtime_instance_id: fixture_id(10_008),
             },
         }),
-        route: Some(StoredRoute::Command { run_as: RunAs::App }),
+        route: Some(StoredRoute::Filesystem {
+            route: StoredFilesystemRoute::Mutation,
+            target_type: FileTargetType::Path,
+            app_preflight: StoredPreflight::Positive,
+            shizuku_preflight: StoredPreflight::Unknown,
+        }),
         payload: Some(ExecutionPayload::OpaqueOperation(
-            "fixture-command".to_owned(),
+            "fixture-download".to_owned(),
         )),
-        result: Some(TaskTerminalResult::Command(CommandResult {
-            state: CommandTerminalState::Completed,
-            failure_code: None,
-            exit_code: Some(0),
-            requested_run_as: RunAs::App,
-            actual_run_as: RunAs::App,
-            execution_class: ExecutionClass::App,
-            duration_ms: 2,
-            stdout: None,
-            stdout_ref: Some(format!("dbref:stdout:{artifact_id}")),
-            stdout_truncated: false,
-            stderr: None,
-            stderr_ref: None,
-            stderr_truncated: false,
-        })),
+        result: Some(TaskTerminalResult::FilesystemDownload(
+            FilesystemDownloadResult {
+                destination: FileTarget {
+                    target_type: FileTargetType::Path,
+                    value: "/data/local/tmp/fixture.bin".to_owned(),
+                },
+                size: 64,
+                sha256: "cd".repeat(32),
+            },
+        )),
         error: None,
         reserved_bytes: 16_384,
         automation_owner: None,

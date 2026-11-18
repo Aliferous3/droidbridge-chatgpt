@@ -2,7 +2,7 @@
 //! that frames them; initialization-based clients of the 2025 revisions are served alongside. The facade owns no Task, Automation, capability or host truth: every tool call
 //! and resource query goes to the currently authoritative Runtime through [`McpHost`].
 
-use crate::{PortFuture, command::new_uuid};
+use crate::{PortFuture, execution::new_uuid};
 use base64::{
     Engine,
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
@@ -25,10 +25,10 @@ pub const MCP_DEBUG_PORT: u16 = 18765;
 pub const MCP_ROOT_STABLE_PORT: u16 = 8766;
 pub const MCP_ROOT_DEBUG_PORT: u16 = 18766;
 /// The R-TOOL-001 mother tools in their fixed `tools/list` order.
-pub const MCP_TOOL_NAMES: [&str; 8] = [
+/// Local build: `command` is not advertised or callable (owner policy: no shell surface).
+pub const MCP_TOOL_NAMES: [&str; 7] = [
     "context",
     "filesystem",
-    "command",
     "network",
     "visual",
     "android",
@@ -69,18 +69,6 @@ const fn presentation(name: &str) -> ToolPresentation {
                 "- Inspect, read, write, manage, archive and download files.\n",
                 "- Paged reads: encoding=\"base64\"; advance by returned_bytes until truncated=false.\n",
                 "- Async operations return task_id."
-            ),
-            false,
-            true,
-            false,
-            true,
-        ),
-        b"command" => (
-            "Shell commands",
-            concat!(
-                "- Run commands with an explicit, supported run_as.\n",
-                "- Use as_task=true for long-running commands.\n",
-                "- Success: state=\"completed\" and exit_code=0, including the nested command result."
             ),
             false,
             true,
@@ -184,23 +172,6 @@ fn tool_examples(name: &str) -> Result<Value, DomainError> {
                     "encoding": "base64",
                     "offset": 0,
                     "max_bytes": 1024
-                }
-            }
-        ]),
-        "command" => json!([
-            {
-                "action": "run",
-                "input": {
-                    "command": "id",
-                    "run_as": "shell"
-                }
-            },
-            {
-                "action": "run",
-                "input": {
-                    "command": "id",
-                    "run_as": "shell",
-                    "as_task": true
                 }
             }
         ]),
@@ -1367,10 +1338,9 @@ fn next_step(code: &str) -> Option<&'static str> {
         "NOT_FOUND" => {
             "The referenced item does not exist or has expired. Obtain a fresh reference first."
         }
-        "TIMEOUT" => concat!(
-            "It did not finish in time. For a long command, set a larger timeout_ms (root allows ",
-            "up to 3600000) and run it with as_task, following the task with task_control."
-        ),
+        "TIMEOUT" => {
+            "It did not finish in time. Retry the operation, or split the work into smaller steps."
+        }
         "RESOURCE_LIMIT" => concat!(
             "A size or count limit was reached. Ask for less, for example fewer nodes, no image ",
             "or a smaller file."

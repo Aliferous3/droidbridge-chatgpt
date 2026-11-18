@@ -30,7 +30,7 @@ class I11DeviceGateTest {
             val cancelling = envelope.decodeToString().contains("\"action\":\"cancel\"")
             if (cancelling) cancelRequested.set(true)
             """{"protocol_version":1,"request_id":"r","outcome":"success","result":{
-                "task_id":"99700000-0000-4000-8000-000000000001","state":"running","tool":"command","action":"run",
+                "task_id":"99700000-0000-4000-8000-000000000001","state":"running","tool":"network","action":"diagnose",
                 "created_at":"2026-09-15T08:00:00.000Z","started_at":"2026-09-15T08:00:01.000Z",
                 "cancel_requested":${cancelRequested.get()},"execution_class":"app"}}""".encodeToByteArray()
         })

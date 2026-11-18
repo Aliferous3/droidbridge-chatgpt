@@ -344,7 +344,6 @@ fn grant_facts(values: &BTreeMap<String, Registration>) -> Result<GrantFacts, Do
         magisk_clipboard: get("magisk.clipboard")?,
         magisk_notifications: get("magisk.notifications")?,
         magisk_wake_alarm: get("magisk.wake_alarm")?,
-        execution_app_guard: get("execution.app_guard")?,
         execution_shell_guard: get("execution.shell_guard")?,
         execution_root_guard: get("execution.root_guard")?,
     })
@@ -428,7 +427,7 @@ impl crate::CapabilityPort for ApkCapabilityPort {
                 app_execution_surface,
             },
             resolver_facts: ResolverFacts {
-                app_native: state("execution.app_guard")?,
+                app_native: app_execution_surface,
                 app_framework: app_execution_surface,
                 shizuku: state("shizuku.shell")?,
                 magisk_native: state("magisk.root")?,
@@ -440,7 +439,7 @@ impl crate::CapabilityPort for ApkCapabilityPort {
                 media_projection: state("visual.media_projection_session")?,
                 notification_listener: state("android.notification_listener")?,
                 generations: ProviderGenerations {
-                    app_native: generation("execution.app_guard")?,
+                    app_native: self.environment.host_generation,
                     app_framework: self.environment.host_generation,
                     shizuku: generation("shizuku.shell")?,
                     magisk_native: generation("magisk.root")?,
@@ -539,7 +538,7 @@ mod tests {
             reason: None,
         };
         runtime
-            .register_capability("execution.app_guard", available, 4, true)
+            .register_capability("shizuku.shell", available, 4, true)
             .unwrap();
 
         let snapshot = runtime
@@ -547,11 +546,13 @@ mod tests {
             .current()
             .unwrap();
         assert_eq!(snapshot.fence.runtime_instance_id, runtime_instance);
+        assert_eq!(snapshot.resolver_facts.shizuku, CapabilityState::Available);
+        assert_eq!(snapshot.resolver_facts.generations.shizuku, 4);
         assert_eq!(
             snapshot.resolver_facts.app_native,
             CapabilityState::Available
         );
-        assert_eq!(snapshot.resolver_facts.generations.app_native, 4);
+        assert_eq!(snapshot.resolver_facts.generations.app_native, 1);
     }
 
     #[test]

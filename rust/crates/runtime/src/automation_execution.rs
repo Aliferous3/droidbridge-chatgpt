@@ -429,8 +429,8 @@ fn create_execution(
     }
     let automation = state.automations[index].automation.clone();
     reserve_admission_capacity(state)?;
-    let execution_id = crate::command::new_uuid()?;
-    let task_id = crate::command::new_uuid()?;
+    let execution_id = crate::execution::new_uuid()?;
+    let task_id = crate::execution::new_uuid()?;
     let summary = AutomationExecutionSummary {
         execution_id: execution_id.clone(),
         task_id: task_id.clone(),

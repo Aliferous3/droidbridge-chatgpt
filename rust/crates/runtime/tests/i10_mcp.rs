@@ -629,8 +629,8 @@ async fn i10_g07_tool_and_resource_references_map_deterministically() {
         &facade
             .handle(
                 tool_call(
-                    "command",
-                    json!({"action": "run", "input": {"command": "id", "run_as": "app"}}),
+                    "network",
+                    json!({"action": "diagnose", "input": {"test": "connectivity"}}),
                 ),
                 TOKEN,
             )
@@ -641,7 +641,7 @@ async fn i10_g07_tool_and_resource_references_map_deterministically() {
         vec![json!({
             "protocol_version": 1,
             "request_id": REQUEST_ID,
-            "payload": {"tool": "command", "action": "run", "input": {"command": "id", "run_as": "app"}},
+            "payload": {"tool": "network", "action": "diagnose", "input": {"test": "connectivity"}},
         })]
     );
     let result = &called["result"];
@@ -669,15 +669,14 @@ async fn i10_g07_tool_and_resource_references_map_deterministically() {
     );
 
     // A business failure is the exact R-CONTRACT-002 error with isError=true, never a JSON-RPC code.
-    let error =
-        json!({"code": "CAPABILITY_UNAVAILABLE", "operation": "command.run", "retryable": false});
+    let error = json!({"code": "CAPABILITY_UNAVAILABLE", "operation": "network.diagnose", "retryable": false});
     host.reply_submit(json!({"protocol_version": 1, "request_id": REQUEST_ID, "outcome": "error", "error": error}));
     let failed = json_body(
         &facade
             .handle(
                 tool_call(
-                    "command",
-                    json!({"action": "run", "input": {"command": "id", "run_as": "root"}}),
+                    "network",
+                    json!({"action": "diagnose", "input": {"test": "connectivity"}}),
                 ),
                 TOKEN,
             )
@@ -729,17 +728,17 @@ async fn i10_g07_tool_and_resource_references_map_deterministically() {
 
     // A reason the Runtime wrote itself is kept, and a code with no next step is left alone.
     for error in [
-        json!({"code": "RESOURCE_LIMIT", "operation": "command.run", "retryable": false,
+        json!({"code": "RESOURCE_LIMIT", "operation": "network.diagnose", "retryable": false,
                "message": "the Runtime's own reason"}),
-        json!({"code": "IO_ERROR", "operation": "command.run", "retryable": false}),
+        json!({"code": "IO_ERROR", "operation": "network.diagnose", "retryable": false}),
     ] {
         host.reply_submit(json!({"protocol_version": 1, "request_id": REQUEST_ID, "outcome": "error", "error": error}));
         let failed = json_body(
             &facade
                 .handle(
                     tool_call(
-                        "command",
-                        json!({"action": "run", "input": {"command": "id", "run_as": "root"}}),
+                        "network",
+                        json!({"action": "diagnose", "input": {"test": "connectivity"}}),
                     ),
                     TOKEN,
                 )
@@ -751,11 +750,11 @@ async fn i10_g07_tool_and_resource_references_map_deterministically() {
     // Arguments outside the tool's generated union are -32602, and the rejection names the field
     // that has to change.
     for arguments in [
-        json!({"action": "run"}),
-        json!({"action": "status", "input": {}}),
-        json!({"action": "run", "input": {"command": "id", "run_as": "app"}, "extra": true}),
+        json!({"action": "diagnose"}),
+        json!({"action": "bogus", "input": {}}),
+        json!({"action": "diagnose", "input": {"test": "connectivity"}, "extra": true}),
     ] {
-        let response = json_body(&facade.handle(tool_call("command", arguments), TOKEN).await);
+        let response = json_body(&facade.handle(tool_call("network", arguments), TOKEN).await);
         assert_eq!(response["error"]["code"], -32602);
         assert_eq!(response["error"]["data"]["field"], "params.arguments");
     }
