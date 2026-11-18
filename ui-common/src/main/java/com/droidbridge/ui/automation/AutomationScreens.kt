@@ -84,7 +84,6 @@ import com.droidbridge.ui.product.automation.AutomationRow
 import com.droidbridge.ui.product.automation.AutomationSteps
 import com.droidbridge.ui.product.automation.ElementBy
 import com.droidbridge.ui.product.automation.PlanKey
-import com.droidbridge.ui.product.automation.PlanRunAs
 import com.droidbridge.ui.product.automation.PlanStep
 import com.droidbridge.ui.product.automation.PlanTrigger
 import com.droidbridge.ui.product.automation.StepLine
@@ -681,7 +680,6 @@ private enum class StepKind(@StringRes val label: Int, @DrawableRes val icon: In
     Type(R.string.step_kind_type, R.drawable.ic_keyboard, { PlanStep.TypeText("") }),
     Key(R.string.step_kind_key, R.drawable.ic_keyboard_return, { PlanStep.PressKey(PlanKey.Back) }),
     Wait(R.string.step_kind_wait, R.drawable.ic_hourglass, { PlanStep.Wait(3) }),
-    Command(R.string.step_kind_command, R.drawable.ic_terminal, { PlanStep.RunCommand("") }),
     Copy(R.string.step_kind_copy, R.drawable.ic_content_copy, { PlanStep.CopyText("") }),
 }
 
@@ -691,7 +689,6 @@ private fun PlanStep.kind(): StepKind = when (this) {
     is PlanStep.TypeText -> StepKind.Type
     is PlanStep.PressKey -> StepKind.Key
     is PlanStep.Wait -> StepKind.Wait
-    is PlanStep.RunCommand -> StepKind.Command
     is PlanStep.CopyText -> StepKind.Copy
 }
 
@@ -760,18 +757,6 @@ private fun StepCard(index: Int, step: PlanStep, count: Int, viewModel: Automati
                 is PlanStep.Wait -> NumberField(step.seconds.toLong(), stringResource(R.string.field_seconds), "$tag:seconds") {
                     set(step.copy(seconds = it.toInt()))
                 }
-                is PlanStep.RunCommand -> {
-                    TextField(step.command, stringResource(R.string.field_command), "$tag:command", singleLine = false) {
-                        set(step.copy(command = it))
-                    }
-                    Choice(
-                        label = stringResource(R.string.field_run_as),
-                        options = PlanRunAs.entries,
-                        selected = step.runAs,
-                        optionLabel = { stringResource(runAsLabel(it)) },
-                        tag = "$tag:run_as",
-                    ) { set(step.copy(runAs = it)) }
-                }
                 is PlanStep.CopyText -> TextField(step.text, stringResource(R.string.field_text), "$tag:text") {
                     set(step.copy(text = it))
                 }
@@ -784,7 +769,6 @@ private fun StepCard(index: Int, step: PlanStep, count: Int, viewModel: Automati
                             is PlanStep.TapElement -> step.copy(continueOnFailure = continues)
                             is PlanStep.TypeText -> step.copy(continueOnFailure = continues)
                             is PlanStep.PressKey -> step.copy(continueOnFailure = continues)
-                            is PlanStep.RunCommand -> step.copy(continueOnFailure = continues)
                             is PlanStep.CopyText -> step.copy(continueOnFailure = continues)
                             is PlanStep.Wait -> step
                         },
@@ -1106,7 +1090,6 @@ private fun stepText(step: PlanStep): String = when (step) {
         },
     )
     is PlanStep.Wait -> stringResource(R.string.step_wait, step.seconds)
-    is PlanStep.RunCommand -> stringResource(R.string.step_command, step.command)
     is PlanStep.CopyText -> stringResource(R.string.step_copy, step.text)
 }
 
@@ -1157,13 +1140,6 @@ private fun keyLabel(key: PlanKey): Int = when (key) {
     PlanKey.Home -> R.string.key_home
     PlanKey.Recents -> R.string.key_recents
     PlanKey.Enter -> R.string.key_enter
-}
-
-@StringRes
-private fun runAsLabel(runAs: PlanRunAs): Int = when (runAs) {
-    PlanRunAs.App -> R.string.run_as_app
-    PlanRunAs.Shell -> R.string.run_as_shell
-    PlanRunAs.Root -> R.string.run_as_root
 }
 
 @StringRes

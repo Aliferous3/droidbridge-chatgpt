@@ -5,7 +5,6 @@ import com.droidbridge.ui.product.automation.AutomationPlans
 import com.droidbridge.ui.product.automation.AutomationSteps
 import com.droidbridge.ui.product.automation.ElementBy
 import com.droidbridge.ui.product.automation.PlanKey
-import com.droidbridge.ui.product.automation.PlanRunAs
 import com.droidbridge.ui.product.automation.PlanStep
 import com.droidbridge.ui.product.automation.PlanTrigger
 import com.droidbridge.ui.product.automation.StepLine
@@ -43,7 +42,6 @@ class I9_AutomationPlanTest {
             PlanStep.TypeText("hello", target = "搜索", waitSeconds = 5),
             PlanStep.PressKey(PlanKey.Back),
             PlanStep.Wait(3),
-            PlanStep.RunCommand("echo hi", PlanRunAs.Root, continueOnFailure = true),
             PlanStep.CopyText("copied"),
         )
         val triggers = listOf(
@@ -98,9 +96,8 @@ class I9_AutomationPlanTest {
                   "args":{"operation":"tap","by":"text","value":"签到","wait_ms":10000},"on_failure":"continue"},
                  {"type":"conditional",
                   "condition":{"source":"result","key":"succeeded","operator":"equals","value":false},
-                  "then":{"type":"call","tool":"command","action":"run",
-                          "args":{"command":"echo retry","run_as":"shell","timeout_ms":5000,
-                                  "max_output_bytes":65536,"as_task":false}}}]}""",
+                  "then":{"type":"call","tool":"filesystem","action":"read",
+                          "args":{"path":"/sdcard/note.txt"}}}]}""",
         ).jsonObject
         val automation = buildJsonObject {
             put("name", "advanced")
@@ -113,8 +110,8 @@ class I9_AutomationPlanTest {
             listOf(
                 StepLine.Step(0, PlanStep.TapElement(ElementBy.Text, "签到", continueOnFailure = true)),
                 StepLine.If(0, "result", "succeeded", "equals", "false"),
-                // A non-default timeout is not a template command, so it is named by its tool.
-                StepLine.Call(1, "command", "run"),
+                // A call no template step represents is named by its tool.
+                StepLine.Call(1, "filesystem", "read"),
             ),
             AutomationSteps.describe(action),
         )

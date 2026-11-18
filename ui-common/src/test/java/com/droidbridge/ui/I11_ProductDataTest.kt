@@ -44,7 +44,7 @@ class I11_ProductDataTest {
         val repository = TaskRepository(submit = { envelope ->
             sent += envelope.decodeToString()
             """{"protocol_version":1,"request_id":"r","outcome":"success","result":{"tasks":[
-                {"task_id":"t1","state":"running","tool":"command","action":"run","created_at":"2026-09-15T08:00:00.000Z","started_at":"2026-09-15T08:00:01.000Z"}
+                {"task_id":"t1","state":"running","tool":"context","action":"status","created_at":"2026-09-15T08:00:00.000Z","started_at":"2026-09-15T08:00:01.000Z"}
             ]}}""".encodeToByteArray()
         }, requestIds = { "99500000-0000-4000-8000-000000000001" })
 
@@ -74,7 +74,7 @@ class I11_ProductDataTest {
     fun I11_G05_taskDetailValuesAreTheOwnerOutputsVerbatim() = runBlocking {
         val repository = TaskRepository(submit = {
             """{"protocol_version":1,"request_id":"r","outcome":"success","result":{
-                "task_id":"t2","state":"completed","tool":"command","action":"run","created_at":"2026-09-15T08:00:00.000Z",
+                "task_id":"t2","state":"completed","tool":"context","action":"status","created_at":"2026-09-15T08:00:00.000Z",
                 "cancel_requested":false,"execution_class":"app",
                 "result":{"exit_code":0,"stdout_ref":"dbref:stdout:a","image_ref":"dbref:image:b","stderr":"","data_ref":null}
             }}""".encodeToByteArray()
@@ -220,7 +220,7 @@ class I11_ProductDataTest {
     }
 
     private fun snapshot(state: String, cancelRequested: Boolean) = TaskSnapshot(
-        taskId = "t", state = state, tool = "command", action = "run", createdAt = "2026-09-15T08:00:00.000Z",
+        taskId = "t", state = state, tool = "context", action = "status", createdAt = "2026-09-15T08:00:00.000Z",
         startedAt = null, endedAt = null, executionClass = null, cancelRequested = cancelRequested,
         result = JsonPrimitive("x").takeIf { false }, error = null,
     )

@@ -238,7 +238,6 @@ private val taskNames = mapOf(
     "filesystem.manage" to R.string.task_filesystem_manage,
     "filesystem.download" to R.string.task_filesystem_download,
     "filesystem.archive" to R.string.task_filesystem_archive,
-    "command.run" to R.string.task_command_run,
     "network.inspect" to R.string.task_network_inspect,
     "network.capture" to R.string.task_network_capture,
     "network.packet" to R.string.task_network_packet,

@@ -60,7 +60,7 @@
     <string name="automation_intro_ai">Your AI can also: branch on whether the last step worked, and repeat steps</string>
     <string name="automation_intro_body">Tell your connected AI what to automate, like “open the app at 8 every morning and tap Check in”, and it builds it. Or tap New to build one yourself.</string>
     <string name="automation_intro_title">Let your AI build it</string>
-    <string name="automation_intro_what">Steps: open apps, tap or long-press text on screen, type, press keys, wait, run commands, copy to the clipboard, download and manage files, check the network</string>
+    <string name="automation_intro_what">Steps: open apps, tap or long-press text on screen, type, press keys, wait, copy to the clipboard, download and manage files, check the network</string>
     <string name="automation_intro_when">When: at a time, daily, weekly, repeatedly, when DroidBridge starts, when the network changes</string>
     <string name="automation_name">Name</string>
     <string name="automation_new_title">New automation</string>
@@ -131,7 +131,6 @@
     <string name="error_weekly_days">Pick at least one day</string>
     <string name="execution_class_app">App</string>
     <string name="execution_class_framework">Android framework</string>
-    <string name="field_command">Command</string>
     <string name="field_continue">Continue if it fails</string>
     <string name="field_date">Date</string>
     <string name="field_element_value">Text to find</string>
@@ -140,7 +139,6 @@
     <string name="field_key">Key</string>
     <string name="field_long_press">Long press</string>
     <string name="field_network">Network</string>
-    <string name="field_run_as">Run as</string>
     <string name="field_seconds">Seconds</string>
     <string name="field_target_text">Text in the field</string>
     <string name="field_text">Text</string>
@@ -199,9 +197,6 @@
     <string name="reason_tunnel_openai_unavailable">OpenAI could not be reached. Check the network and try again.</string>
     <string name="reason_tunnel_runtime_failed">The secure tunnel could not connect. Check the credential and network, then retry.</string>
     <string name="reason_user_consent_required">Start screen capture to allow this request.</string>
-    <string name="run_as_app">App</string>
-    <string name="run_as_root">Root</string>
-    <string name="run_as_shell">Shell</string>
     <string name="run_error_failed">Failed</string>
     <string name="run_error_not_found">Target not found</string>
     <string name="run_error_permission">Permission denied</string>
@@ -256,7 +251,6 @@
     <string name="state_unknown">Unknown</string>
     <string name="state_unrestricted">Unrestricted</string>
     <string name="state_update_required">Update required</string>
-    <string name="step_command">Run: %1$s</string>
     <string name="step_continue">Continues on failure</string>
     <string name="step_copy">Copy “%1$s”</string>
     <string name="step_if">If %1$s</string>
@@ -264,7 +258,6 @@
     <string name="step_key_enter">Press Enter</string>
     <string name="step_key_home">Press Home</string>
     <string name="step_key_recents">Press Recents</string>
-    <string name="step_kind_command">Run command</string>
     <string name="step_kind_copy">Copy to clipboard</string>
     <string name="step_kind_key">Press key</string>
     <string name="step_kind_open_app">Open app</string>
@@ -293,7 +286,6 @@
     <string name="task_android_notification">Notifications</string>
     <string name="task_android_package">Inspect app</string>
     <string name="task_automation_execution">Run automation</string>
-    <string name="task_command_run">Run command</string>
     <string name="task_context_catalog">List capabilities</string>
     <string name="task_context_status">Check status</string>
     <string name="task_detail_created">Created</string>

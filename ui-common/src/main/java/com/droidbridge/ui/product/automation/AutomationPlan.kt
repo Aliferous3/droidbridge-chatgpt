@@ -45,8 +45,6 @@ enum class PlanKey(val keyCode: Int) {
     Enter(66),
 }
 
-enum class PlanRunAs(val wire: String) { App("app"), Shell("shell"), Root("root") }
-
 /** One template step. [continueOnFailure] lets the run go on when this step fails. */
 sealed interface PlanStep {
     val continueOnFailure: Boolean
@@ -70,11 +68,6 @@ sealed interface PlanStep {
     data class Wait(val seconds: Int) : PlanStep {
         override val continueOnFailure: Boolean get() = false
     }
-    data class RunCommand(
-        val command: String,
-        val runAs: PlanRunAs = PlanRunAs.App,
-        override val continueOnFailure: Boolean = false,
-    ) : PlanStep
     data class CopyText(val text: String, override val continueOnFailure: Boolean = false) : PlanStep
 
     companion object {
@@ -240,10 +233,6 @@ object AutomationPlans {
                     put("key_code", step.key.keyCode)
                     put("meta_state", 0)
                 }
-                is PlanStep.RunCommand -> call("command", "run") {
-                    put("command", step.command)
-                    put("run_as", step.runAs.wire)
-                }
                 is PlanStep.CopyText -> call("android", "clipboard") {
                     put("operation", "write")
                     put("text", step.text)
@@ -288,7 +277,6 @@ object AutomationPlans {
                 ?.takeIf { it.str("operation") == "write" }
                 ?.str("text")
                 ?.let { PlanStep.CopyText(it, continueOnFailure) }
-            "command.run" -> decodeCommand(args, continueOnFailure)
             "visual.element" -> decodeElement(args, continueOnFailure)
             "visual.interact" -> when (args.str("operation")) {
                 "text" -> args.only("operation", "text")?.str("text")?.let { PlanStep.TypeText(it, null, continueOnFailure = continueOnFailure) }
@@ -300,16 +288,6 @@ object AutomationPlans {
             }
             else -> null
         }
-    }
-
-    private fun decodeCommand(args: JsonObject, continueOnFailure: Boolean): PlanStep? {
-        // A command saved by a template carries only the Contract defaults it did not set.
-        if (args.keys - COMMAND_KEYS != emptySet<String>()) return null
-        if ((args["as_task"] as? JsonPrimitive)?.booleanOrNull == true) return null
-        if (args.long("timeout_ms") != null && args.long("timeout_ms") != DEFAULT_COMMAND_TIMEOUT_MS) return null
-        if (args.long("max_output_bytes") != null && args.long("max_output_bytes") != DEFAULT_COMMAND_OUTPUT_BYTES) return null
-        val runAs = PlanRunAs.entries.firstOrNull { it.wire == args.str("run_as") } ?: return null
-        return PlanStep.RunCommand(args.str("command") ?: return null, runAs, continueOnFailure)
     }
 
     private fun decodeElement(args: JsonObject, continueOnFailure: Boolean): PlanStep? {
@@ -338,9 +316,6 @@ object AutomationPlans {
     private fun JsonObject.only(vararg keys: String): JsonObject? = takeIf { this.keys == keys.toSet() }
 
     private val DTSTART: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
-    private val COMMAND_KEYS = setOf("command", "run_as", "timeout_ms", "max_output_bytes", "as_task")
-    private const val DEFAULT_COMMAND_TIMEOUT_MS = 30_000L
-    private const val DEFAULT_COMMAND_OUTPUT_BYTES = 65_536L
     const val RUNTIME_READY = "runtime.ready"
     const val NETWORK_CHANGED = "network.default_changed"
     val NETWORK_TRANSPORTS = setOf("wifi", "cellular")

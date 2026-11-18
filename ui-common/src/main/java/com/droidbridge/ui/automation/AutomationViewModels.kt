@@ -327,7 +327,6 @@ class AutomationEditorViewModel(
         is PlanStep.TypeText -> step.target?.isNotBlank() != false && step.waitSeconds in 0..PlanStep.MAX_WAIT_SECONDS
         is PlanStep.PressKey -> true
         is PlanStep.Wait -> step.seconds in 1..MAX_WAIT_STEP_SECONDS
-        is PlanStep.RunCommand -> step.command.isNotBlank()
         is PlanStep.CopyText -> true
     }
 

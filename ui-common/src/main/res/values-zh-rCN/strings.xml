@@ -57,7 +57,7 @@
     <string name="automation_intro_ai">AI 还能：按上一步成败决定下一步、重复执行</string>
     <string name="automation_intro_body">对连接的 AI 说出需求，比如“每天 8 点打开钉钉，点一下打卡”，它会帮你建好。也可以点“新建”自己搭。</string>
     <string name="automation_intro_title">让 AI 帮你定制</string>
-    <string name="automation_intro_what">能做什么：打开应用、点击或长按屏幕上的文字、输入文字、按键、等待、运行命令、复制到剪贴板、下载和整理文件、网络检测</string>
+    <string name="automation_intro_what">能做什么：打开应用、点击或长按屏幕上的文字、输入文字、按键、等待、复制到剪贴板、下载和整理文件、网络检测</string>
     <string name="automation_intro_when">何时运行：定时、每天、每周、每隔一段时间、卓爱桥启动时、网络切换时</string>
     <string name="automation_name">名称</string>
     <string name="automation_new_title">新建自动化</string>
@@ -128,7 +128,6 @@
     <string name="error_weekly_days">至少选一天</string>
     <string name="execution_class_app">应用</string>
     <string name="execution_class_framework">系统框架</string>
-    <string name="field_command">命令</string>
     <string name="field_continue">失败后继续</string>
     <string name="field_date">日期</string>
     <string name="field_element_value">要找的文字</string>
@@ -137,7 +136,6 @@
     <string name="field_key">按键</string>
     <string name="field_long_press">长按</string>
     <string name="field_network">网络</string>
-    <string name="field_run_as">运行身份</string>
     <string name="field_seconds">秒数</string>
     <string name="field_target_text">输入框里的文字</string>
     <string name="field_text">文字</string>
@@ -196,9 +194,6 @@
     <string name="reason_tunnel_openai_unavailable">无法连接 OpenAI。请检查网络后重试。</string>
     <string name="reason_tunnel_runtime_failed">安全隧道无法连接。请检查凭据和网络，然后重试。</string>
     <string name="reason_user_consent_required">请先开始屏幕捕获以允许此请求。</string>
-    <string name="run_as_app">应用</string>
-    <string name="run_as_root">Root</string>
-    <string name="run_as_shell">Shell</string>
     <string name="run_error_failed">执行失败</string>
     <string name="run_error_not_found">没找到目标</string>
     <string name="run_error_permission">没有权限</string>
@@ -255,7 +250,6 @@
     <string name="state_unknown">未知</string>
     <string name="state_unrestricted">不受限制</string>
     <string name="state_update_required">需要更新</string>
-    <string name="step_command">运行命令：%1$s</string>
     <string name="step_continue">失败也继续</string>
     <string name="step_copy">复制“%1$s”</string>
     <string name="step_if">如果%1$s</string>
@@ -263,7 +257,6 @@
     <string name="step_key_enter">按回车键</string>
     <string name="step_key_home">按主页键</string>
     <string name="step_key_recents">按最近任务键</string>
-    <string name="step_kind_command">运行命令</string>
     <string name="step_kind_copy">复制到剪贴板</string>
     <string name="step_kind_key">按键</string>
     <string name="step_kind_open_app">打开应用</string>
@@ -292,7 +285,6 @@
     <string name="task_android_notification">通知</string>
     <string name="task_android_package">查看应用</string>
     <string name="task_automation_execution">运行自动化</string>
-    <string name="task_command_run">运行命令</string>
     <string name="task_context_catalog">查看功能</string>
     <string name="task_context_status">查看状态</string>
     <string name="task_detail_created">创建时间</string>
